@@ -19,14 +19,14 @@ export const MethodologyPage: React.FC = () => {
       <div className="space-y-2 border-b border-stone-200 pb-6">
         <div className="flex items-center gap-2 text-xs font-mono text-stone-500 uppercase tracking-wider">
           <BookOpen size={14} className="text-amber-600" />
-          <span>Academic Specification • Viva Defense Dossier</span>
+          <span>Academic Specification • Research Methodology</span>
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight">
           TruthLens Epistemological Methodology
         </h1>
         <p className="text-sm text-stone-600 leading-relaxed font-sans max-w-3xl">
           A rigorous academic framework for automated claim verification, evidentiary cross-examination,
-          and conflict detection using evidence-bounded reasoning with Gemini 3.8 Flash.
+          and conflict detection using Tavily Search API evidence retrieval with Gemini 3.8 Flash reasoning.
         </p>
       </div>
 
@@ -38,7 +38,7 @@ export const MethodologyPage: React.FC = () => {
             1. Core Epistemological Framework
           </h2>
         </div>
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-4 text-xs sm:text-sm text-stone-700 leading-relaxed">
+        <div className="bg-white border border-stone-200 rounded-xl p-6 space-y-4 text-xs sm:text-sm text-stone-700 leading-relaxed">
           <p>
             Standard AI chatbots frequently generate hallucinations or deliver binary "true/false"
             declarations without verifiable evidentiary grounding. TruthLens explicitly rejects this
@@ -85,15 +85,15 @@ export const MethodologyPage: React.FC = () => {
           <div className="bg-white border border-stone-200 rounded-xl p-4 space-y-1.5">
             <span className="font-mono font-bold text-stone-900">Stage 02: Claim Decomposition</span>
             <p>
-              Segments dense journalistic text into atomic, verifiable claims. Categorizes claims across 10 disciplines
+              Segments dense journalistic text into atomic, verifiable claims. Categorizes claims across disciplines
               and isolates opinions, predictions, and aesthetic statements from empirical propositions.
             </p>
           </div>
           <div className="bg-white border border-stone-200 rounded-xl p-4 space-y-1.5">
             <span className="font-mono font-bold text-stone-900">Stage 03: Evidence Retrieval</span>
             <p>
-              Queries live authoritative indexing systems via Gemini 3.8 Flash Google Search Grounding to collect
-              primary source links, scientific publications, and official registry citations.
+              Queries live authoritative indexing systems via Tavily Search API with genuine URLs, published dates,
+              and content snippets across government, academic, and global news domains.
             </p>
           </div>
           <div className="bg-white border border-stone-200 rounded-xl p-4 space-y-1.5">
@@ -156,7 +156,7 @@ export const MethodologyPage: React.FC = () => {
             3. Verdict Taxonomy & Absence of Evidence
           </h2>
         </div>
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 space-y-4 text-xs sm:text-sm text-stone-700">
+        <div className="bg-white border border-stone-200 rounded-xl p-6 space-y-4 text-xs sm:text-sm text-stone-700">
           <p>
             TruthLens enforces a disciplined 3-verdict taxonomy. A fourth composite verdict (
             <strong>CONFLICTING EVIDENCE</strong>) is rendered at the dossier level when high-tier sources
@@ -184,7 +184,7 @@ export const MethodologyPage: React.FC = () => {
               <span className="font-mono font-bold text-amber-800 text-xs">INSUFFICIENT EVIDENCE</span>
               <p className="text-xs text-amber-950">
                 Insufficient empirical records exist to confirm or refute the assertion.
-                <strong> Absence of evidence is NEVER treated as proof of falsehood.</strong>
+                <strong> Absence of evidence alone does not establish that a claim is false.</strong>
               </p>
             </div>
           </div>

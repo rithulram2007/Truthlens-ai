@@ -16,29 +16,29 @@ export const ConfidenceMeter: React.FC<ConfidenceMeterProps> = ({
 
   let colorClass = 'bg-stone-500 text-stone-700';
   let badgeColor = 'bg-stone-100 text-stone-700 border-stone-300';
-  let tierText = 'Low System Certainty';
+  let tierText = 'Low Confidence';
 
   if (normalized >= 80) {
     colorClass = 'bg-emerald-600 text-emerald-700';
     badgeColor = 'bg-emerald-50 text-emerald-800 border-emerald-300';
-    tierText = 'High Evidentiary Certainty';
+    tierText = 'High Confidence';
   } else if (normalized >= 60) {
     colorClass = 'bg-sky-600 text-sky-700';
     badgeColor = 'bg-sky-50 text-sky-800 border-sky-300';
-    tierText = 'Moderate Evidentiary Certainty';
+    tierText = 'Moderate Confidence';
   } else if (normalized >= 40) {
     colorClass = 'bg-amber-600 text-amber-700';
     badgeColor = 'bg-amber-50 text-amber-800 border-amber-300';
-    tierText = 'Partial / Tentative Assessment';
+    tierText = 'Tentative Confidence';
   } else {
     colorClass = 'bg-stone-500 text-stone-700';
     badgeColor = 'bg-stone-100 text-stone-700 border-stone-300';
-    tierText = 'Constrained / Uncertain Evidence Base';
+    tierText = 'Low Confidence';
   }
 
   if (size === 'sm') {
     return (
-      <div className="flex items-center gap-2" title={`${normalized}% System Confidence (${tierText})`}>
+      <div className="flex items-center gap-2" title={`${normalized}% Confidence (${tierText})`}>
         <div className="w-16 h-2 bg-stone-200 rounded-full overflow-hidden">
           <div className={`h-full ${colorClass}`} style={{ width: `${normalized}%` }} />
         </div>
@@ -52,9 +52,9 @@ export const ConfidenceMeter: React.FC<ConfidenceMeterProps> = ({
       {showLabel && (
         <div className="flex items-center justify-between text-xs text-stone-600">
           <span className="flex items-center gap-1 font-medium">
-            System Confidence
+            Confidence
             <span
-              title="Metric representing system certainty in the evidentiary cross-examination, NOT probability that the claim is true."
+              title="Metric representing evidence-grounded certainty, reflecting consistency and reliability of retrieved sources."
               className="cursor-help text-stone-400 hover:text-stone-600"
             >
               <HelpCircle size={12} />

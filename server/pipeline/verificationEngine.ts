@@ -1,9 +1,11 @@
 import { getGeminiClient, isGeminiQuotaOrServiceError, createServiceUnavailableError } from '../gemini';
+import { searchTavily, isTavilyQuotaOrServiceError } from '../tavily';
 import {
   ClaimVerification,
   OverallVerdictType,
   RiskIndicator,
   SourceItem,
+  SourceRelationship,
   TimelineEvent,
   VerdictType,
   VerificationResult,
@@ -13,30 +15,7 @@ import { assessDomainTier, rankAndDeduplicateSources } from './sourceAssessor';
 import { detectRiskIndicatorsInText } from './riskIndicatorDetector';
 import { ExtractedArticleData } from './articleExtractor';
 
-interface GroundingChunkWeb {
-  uri?: string;
-  title?: string;
-}
-
-interface GroundingChunk {
-  web?: GroundingChunkWeb;
-}
-
-interface CandidateWithGrounding {
-  groundingMetadata?: {
-    webSearchQueries?: string[];
-    groundingChunks?: GroundingChunk[];
-    groundingSupports?: Array<{
-      segment?: { text?: string };
-      groundingChunkIndices?: number[];
-      confidenceScores?: number[];
-    }>;
-  };
-}
-
-interface ClaimAnalysisOutput {
-  claimIndex?: number;
-  claimText?: string;
+interface GeminiClaimReasoningOutput {
   verdict: VerdictType;
   confidence: number;
   reasoning: string;
@@ -45,15 +24,47 @@ interface ClaimAnalysisOutput {
   contradictingEvidence?: string[];
   conflicts?: string[];
   uncertainty?: string;
-  sources?: Array<{
-    sourceName?: string;
-    title?: string;
-    url?: string;
-    publicationDate?: string;
-    relationshipToClaim?: string;
-    relevance?: number;
-    excerpt?: string;
+  sourceRelationships?: Array<{
+    sourceIndex: number;
+    relationship: SourceRelationship;
   }>;
+}
+
+// Robust retry wrapper for Gemini 3.8 Flash to handle transient 503 unavailable spikes
+async function callGeminiWithRetry(prompt: string, maxAttempts = 3): Promise<string> {
+  const ai = getGeminiClient();
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+      });
+      return response.text || '';
+    } catch (err: unknown) {
+      lastError = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[TruthLens] Gemini attempt ${attempt}/${maxAttempts} failed: ${msg}`);
+
+      if (isGeminiQuotaOrServiceError(err)) {
+        // If 429 quota exhausted or non-retryable quota error, don't waste time retrying
+        if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
+          throw createServiceUnavailableError(msg);
+        }
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
+      }
+    }
+  }
+
+  if (isGeminiQuotaOrServiceError(lastError)) {
+    throw createServiceUnavailableError(lastError instanceof Error ? lastError.message : String(lastError));
+  }
+
+  throw new Error(`Gemini reasoning service failed after ${maxAttempts} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 export async function verifyClaimsPipeline(
@@ -98,7 +109,7 @@ export async function verifyClaimsPipeline(
         supportingEvidence: [],
         contradictingEvidence: [],
         conflicts: [],
-        uncertainty: 'Subjective assessments and speculative forecasts contain inherent epistemic uncertainty.',
+        uncertainty: 'Subjective assessments and speculative forecasts contain inherent uncertainty.',
         sources: [],
         riskIndicators: [subjectiveRisk],
       });
@@ -107,281 +118,79 @@ export async function verifyClaimsPipeline(
     }
   }
 
-  // If there are verifiable claims, perform verification using Gemini 3.8 Flash with Google Search Grounding.
-  // CRITICAL OPTIMIZATION:
-  // To minimize unnecessary Gemini API calls and prevent 429 RESOURCE_EXHAUSTED errors,
-  // we batch all verifiable claims into a SINGLE search-grounded Gemini call rather than N separate calls.
-  if (verifiableClaims.length > 0) {
-    const ai = getGeminiClient();
+  // Process each verifiable claim through the verification flow:
+  // Claim -> Tavily Web Search -> Real Evidence -> Source Assessment -> Evidence Ranking -> Comparison & Reasoning
+  for (const vc of verifiableClaims) {
+    console.log(`[TruthLens] Processing claim: "${vc.raw.claimText}" via Tavily Search`);
 
-    let claimsListPrompt = '';
-    verifiableClaims.forEach((vc, idx) => {
-      claimsListPrompt += `Claim [${idx + 1}] (Category: ${vc.raw.category}): "${vc.raw.claimText}"\n`;
-    });
-
-    const consolidatedPrompt = `You are TruthLens's Academic Evidence Retrieval & Verification Engine.
-Your task is to verify the following empirical claim(s) using live search grounding:
-${claimsListPrompt}
-
-Instructions:
-1. Search authoritative sources prioritizing:
-   - Tier 1: Government & official regulatory portals (.gov, WHO, CDC, UN, NASA, etc.)
-   - Tier 2: Scientific journals and peer-reviewed academic publications (Nature, Lancet, Science, PubMed, .edu)
-   - Tier 3: Primary records & official datasets
-   - Tier 4: Reputable global news agencies (Reuters, AP, BBC, AFP, NPR)
-   - Tier 5: Established research institutions & fact-checking organizations (Pew, Brookings, FactCheck.org, Snopes)
-2. For each claim, determine the empirical verdict:
-   - "SUPPORTED": Clear corroborating empirical consensus from authoritative sources.
-   - "CONTRADICTED": Refuted or debunked by authoritative sources or scientific consensus.
-   - "INSUFFICIENT EVIDENCE": Scientific or empirical evidence is absent, inconclusive, or lacking verifiable documentation.
-3. Check for conflicting evidence between reliable sources.
-4. Confidence measures system certainty in the evidentiary assessment (0-100) based on source quality and consensus, NOT personal belief.
-5. Never fabricate fake URLs or fake evidence. Only cite real organizations, domains, and authentic search results.
-
-Output your analysis strictly as a JSON object matching this schema:
-{
-  "assessments": [
-    {
-      "claimIndex": 1,
-      "verdict": "SUPPORTED" | "CONTRADICTED" | "INSUFFICIENT EVIDENCE",
-      "confidence": <integer 0-100>,
-      "reasoning": "<academic rationale grounded strictly in retrieved empirical evidence>",
-      "evidenceSummary": "<concise synthesis of the retrieved empirical findings>",
-      "supportingEvidence": ["<specific finding or quotation supporting the claim if any>"],
-      "contradictingEvidence": ["<specific finding or quotation refuting the claim if any>"],
-      "conflicts": ["<description of any disagreements between sources if any>"],
-      "uncertainty": "<what remains unproven or contested>",
-      "sources": [
-        {
-          "sourceName": "<organization or publisher>",
-          "title": "<article or report title>",
-          "url": "<URL or domain if known>",
-          "publicationDate": "<YYYY-MM-DD or YYYY if known>",
-          "relationshipToClaim": "SUPPORTS" | "CONTRADICTS" | "NEUTRAL" | "INSUFFICIENT",
-          "relevance": <number 0-100>,
-          "excerpt": "<brief factual excerpt>"
-        }
-      ]
-    }
-  ]
-}`;
-
-    let responseText = '';
-    let candidate: CandidateWithGrounding | undefined;
+    // 1. Tavily Web Search (Tavily provides the external web evidence retrieval layer.)
+    let tavilyResults: Array<{
+      title: string;
+      url: string;
+      content: string;
+      score: number;
+      published_date?: string;
+    }> = [];
+    let tavilyAnswer: string | undefined = undefined;
 
     try {
-      // Single call with Google Search Grounding
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: consolidatedPrompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-        },
+      const tavilyRes = await searchTavily(vc.raw.claimText, {
+        maxResults: 5,
+        searchDepth: 'basic',
+        includeAnswer: false,
       });
-
-      candidate = response.candidates?.[0] as CandidateWithGrounding | undefined;
-      responseText = response.text || '';
-    } catch (err: unknown) {
-      console.error('[TruthLens] Gemini search-grounded call failed:', err);
-
-      // Check if this is a quota or service availability error
-      if (isGeminiQuotaOrServiceError(err)) {
+      tavilyResults = tavilyRes.results || [];
+      tavilyAnswer = tavilyRes.answer;
+    } catch (searchErr: unknown) {
+      console.error('[TruthLens] Tavily search error:', searchErr);
+      if (isTavilyQuotaOrServiceError(searchErr)) {
         throw createServiceUnavailableError(
-          err instanceof Error ? err.message : String(err)
+          searchErr instanceof Error ? searchErr.message : String(searchErr),
+          'Tavily'
         );
       }
-
-      // Re-throw generic failures so they are not masked as INSUFFICIENT EVIDENCE
-      throw new Error(
-        `Verification pipeline failed during evidence retrieval: ${
-          err instanceof Error ? err.message : String(err)
-        }`
-      );
+      throw searchErr;
     }
 
-    // Parse JSON from the response
-    let parsedAssessments: ClaimAnalysisOutput[] = [];
-    try {
-      const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, responseText];
-      const parsedJson = JSON.parse(jsonMatch[1]?.trim() || responseText.trim());
-      if (Array.isArray(parsedJson)) {
-        parsedAssessments = parsedJson;
-      } else if (parsedJson && Array.isArray(parsedJson.assessments)) {
-        parsedAssessments = parsedJson.assessments;
-      } else if (parsedJson && typeof parsedJson === 'object') {
-        parsedAssessments = [parsedJson];
+    // 2. Real Evidence & Source Assessment
+    const claimSources: SourceItem[] = [];
+    tavilyResults.forEach((r, sIdx) => {
+      let domain = 'web';
+      try {
+        domain = new URL(r.url).hostname.replace(/^www\./, '');
+      } catch {
+        domain = r.url;
       }
-    } catch {
-      // Fallback bracket parsing
-      const firstBrace = responseText.indexOf('{');
-      const lastBrace = responseText.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        try {
-          const extracted = JSON.parse(responseText.substring(firstBrace, lastBrace + 1));
-          if (Array.isArray(extracted.assessments)) {
-            parsedAssessments = extracted.assessments;
-          } else if (Array.isArray(extracted)) {
-            parsedAssessments = extracted;
-          } else if (extracted.verdict) {
-            parsedAssessments = [extracted];
-          }
-        } catch (e) {
-          console.warn('[TruthLens] JSON parsing fallback error:', e);
-        }
-      }
-    }
 
-    // Extract genuine grounded citations from Google Search Grounding metadata
-    const groundingChunks = candidate?.groundingMetadata?.groundingChunks || [];
-    const searchGroundedSources: SourceItem[] = [];
-
-    groundingChunks.forEach((chunk, gIdx) => {
-      if (chunk.web?.uri) {
-        const uri = chunk.web.uri;
-        const title = chunk.web.title || `Grounded Citation #${gIdx + 1}`;
-        let domain = 'web';
-        try {
-          domain = new URL(uri).hostname.replace(/^www\./, '');
-        } catch {
-          domain = uri;
-        }
-
-        const { tier, assessment } = assessDomainTier(domain);
-        searchGroundedSources.push({
-          id: `src-grounded-${gIdx}-${Date.now()}`,
-          sourceName: domain,
-          title,
-          url: uri,
-          domain,
-          relevance: Math.max(60, 95 - gIdx * 4),
-          relationshipToClaim: 'NEUTRAL',
-          assessment,
-          tier,
-          excerpt: 'Retrieved via Google Search Grounding during empirical verification pass.',
-        });
-      }
+      const { tier, assessment } = assessDomainTier(domain);
+      claimSources.push({
+        id: `src-tavily-${vc.id}-${sIdx}`,
+        sourceName: domain,
+        title: r.title || `Citation: ${domain}`,
+        url: r.url,
+        domain,
+        publicationDate: r.published_date,
+        relevance: Math.max(50, Math.min(100, Math.round((r.score || 0.8) * 100))),
+        relationshipToClaim: 'NEUTRAL',
+        assessment,
+        tier,
+        excerpt: r.content || 'Retrieved web document snippet.',
+      });
     });
 
-    // Populate each verifiable claim with the parsed assessment
-    verifiableClaims.forEach((vc, idx) => {
-      const assessment =
-        parsedAssessments[idx] ||
-        parsedAssessments.find((a) => a.claimIndex === idx + 1) ||
-        parsedAssessments[0] ||
-        null;
+    // 3. Evidence Ranking & Deduplication
+    const rankedSources = rankAndDeduplicateSources(claimSources);
 
-      let verdict: VerdictType = 'INSUFFICIENT EVIDENCE';
-      if (assessment?.verdict === 'SUPPORTED' || assessment?.verdict === 'CONTRADICTED') {
-        verdict = assessment.verdict;
-      } else if (assessment?.verdict === 'INSUFFICIENT EVIDENCE') {
-        verdict = 'INSUFFICIENT EVIDENCE';
-      } else {
-        // Inferred from reasoning if explicit verdict string had minor variation
-        const rLower = (assessment?.reasoning || responseText).toLowerCase();
-        if (rLower.includes('is supported') || rLower.includes('accurate') || rLower.includes('true')) {
-          verdict = 'SUPPORTED';
-        } else if (rLower.includes('is contradicted') || rLower.includes('false') || rLower.includes('myth') || rLower.includes('debunked')) {
-          verdict = 'CONTRADICTED';
-        }
-      }
-
-      const reasoning =
-        assessment?.reasoning ||
-        responseText.slice(0, 500) ||
-        'Verified using live empirical citations retrieved via Google Search Grounding.';
-      const evidenceSummary =
-        assessment?.evidenceSummary ||
-        'Authoritative documentation and empirical datasets evaluated against the claim statement.';
-      const supportingEvidence = assessment?.supportingEvidence || [];
-      const contradictingEvidence = assessment?.contradictingEvidence || [];
-      const conflicts = assessment?.conflicts || [];
-      const uncertainty =
-        assessment?.uncertainty ||
-        (verdict === 'INSUFFICIENT EVIDENCE'
-          ? 'Lack of conclusive peer-reviewed or primary data.'
-          : 'Minor variances in secondary reporting.');
-
-      // Collect sources specific to this claim
-      const claimSources: SourceItem[] = [];
-
-      // 1. Genuine Google Search Grounding sources
-      searchGroundedSources.forEach((src) => {
-        claimSources.push({
-          ...src,
-          relationshipToClaim:
-            verdict === 'SUPPORTED'
-              ? 'SUPPORTS'
-              : verdict === 'CONTRADICTED'
-              ? 'CONTRADICTS'
-              : 'INSUFFICIENT',
-        });
-      });
-
-      // 2. Sources reported in assessment JSON (only if authentic)
-      if (Array.isArray(assessment?.sources)) {
-        assessment.sources.forEach((s, sIdx) => {
-          if (s.sourceName || s.url) {
-            const domain = s.url ? (s.url.includes('http') ? new URL(s.url).hostname.replace(/^www\./, '') : s.url) : (s.sourceName || 'web');
-            const { tier, assessment: assessTier } = assessDomainTier(domain);
-            claimSources.push({
-              id: `src-json-${vc.id}-${sIdx}`,
-              sourceName: s.sourceName || domain,
-              title: s.title || `Source Citation: ${domain}`,
-              url: s.url || `https://${domain}`,
-              domain,
-              publicationDate: s.publicationDate,
-              relevance: s.relevance || 80,
-              relationshipToClaim: (s.relationshipToClaim as any) || (verdict === 'SUPPORTED' ? 'SUPPORTS' : verdict === 'CONTRADICTED' ? 'CONTRADICTS' : 'INSUFFICIENT'),
-              assessment: assessTier,
-              tier,
-              excerpt: s.excerpt || 'Referenced in empirical verification findings.',
-            });
-          }
-        });
-      }
-
-      // DO NOT FABRICATE SOURCES:
-      // If no sources were retrieved, we leave claimSources as rankAndDeduplicateSources(claimSources)
-      // without adding fake synthetic URLs.
-      const deduplicatedClaimSources = rankAndDeduplicateSources(claimSources);
-
-      // System confidence calculation
-      let calculatedConfidence = assessment?.confidence || 75;
-      const highTierCount = deduplicatedClaimSources.filter((s) => s.assessment === 'HIGH').length;
-      if (highTierCount >= 2 && (verdict === 'SUPPORTED' || verdict === 'CONTRADICTED')) {
-        calculatedConfidence = Math.max(calculatedConfidence, 85);
-      }
-      if (conflicts.length > 0) {
-        calculatedConfidence = Math.min(calculatedConfidence, 72);
-      }
-      if (verdict === 'INSUFFICIENT EVIDENCE') {
-        calculatedConfidence = Math.max(30, Math.min(60, calculatedConfidence));
-      }
-
-      const claimRiskIndicators = detectRiskIndicatorsInText(vc.raw.claimText);
-      if (verdict === 'INSUFFICIENT EVIDENCE' && deduplicatedClaimSources.length === 0) {
-        claimRiskIndicators.push({
-          id: `no-evid-${vc.id}`,
-          type: 'lack_of_evidence',
-          title: 'Scarcity of Corroborating Primary Evidence',
-          description: 'No established primary or peer-reviewed documentation found to corroborate or decisively refute this specific assertion.',
-          excerpt: vc.raw.claimText,
-          severity: 'high',
-        });
-      }
-
-      // Timeline events from sources
-      deduplicatedClaimSources.forEach((src) => {
-        if (src.publicationDate) {
-          allTimelineEvents.push({
-            date: src.publicationDate,
-            title: src.title,
-            source: src.sourceName,
-            relationship: src.relationshipToClaim,
-            url: src.url,
-          });
-        }
-      });
+    // If search succeeded but genuinely returned zero web results across the entire web:
+    if (rankedSources.length === 0) {
+      const noEvidRisk: RiskIndicator = {
+        id: `no-evid-${vc.id}`,
+        type: 'lack_of_evidence',
+        title: 'Lack of Corroborating Evidence',
+        description: 'Web evidence retrieval returned no verifiable empirical documentation or authoritative sources.',
+        excerpt: vc.raw.claimText,
+        severity: 'high',
+      };
 
       verifiedClaims.push({
         id: vc.id,
@@ -389,26 +198,196 @@ Output your analysis strictly as a JSON object matching this schema:
         category: vc.raw.category,
         statementType: vc.raw.statementType,
         isVerifiable: true,
-        verdict,
-        confidence: calculatedConfidence,
-        reasoning,
-        evidenceSummary,
-        supportingEvidence,
-        contradictingEvidence,
-        conflicts,
-        uncertainty,
-        sources: deduplicatedClaimSources,
-        riskIndicators: claimRiskIndicators,
+        verdict: 'INSUFFICIENT EVIDENCE',
+        confidence: 30,
+        reasoning: 'Authoritative web searches returned no verifiable evidence supporting or refuting this specific assertion.',
+        evidenceSummary: 'No empirical evidence or documentation could be retrieved from search engines.',
+        supportingEvidence: [],
+        contradictingEvidence: [],
+        conflicts: [],
+        uncertainty: 'Complete absence of verifiable web evidence.',
+        sources: [],
+        riskIndicators: [noEvidRisk],
       });
+      continue;
+    }
 
-      allSources.push(...deduplicatedClaimSources);
+    // 4. Claim-Evidence Comparison & Gemini Evidence-Grounded Reasoning
+    const sourcesEvidenceText = rankedSources
+      .map(
+        (s, i) =>
+          `[Source ${i + 1}] Title: ${s.title}
+Domain: ${s.domain} (${s.tier})
+URL: ${s.url}
+Excerpt: ${s.excerpt}`
+      )
+      .join('\n\n');
+
+    const reasoningPrompt = `You are TruthLens's Evidence-Grounded Verification Engine.
+Your task is to analyze the empirical claim strictly against the real web evidence retrieved via Tavily Search.
+
+Claim: "${vc.raw.claimText}"
+Category: ${vc.raw.category}
+
+Retrieved Web Evidence:
+${sourcesEvidenceText}
+${tavilyAnswer ? `\nSearch Direct Summary: ${tavilyAnswer}` : ''}
+
+Verification Standards:
+1. Verdict:
+   - "SUPPORTED": The empirical claim is corroborated by retrieved evidence from reputable sources.
+   - "CONTRADICTED": The empirical claim is refuted or contradicted by authoritative retrieved evidence.
+   - "INSUFFICIENT EVIDENCE": The retrieved evidence is inconclusive, ambiguous, or lacks sufficient empirical confirmation. Absence of evidence is INSUFFICIENT EVIDENCE, never falsehood.
+2. Confidence (integer 0-100): Reflects the strength, directness, and consensus of the retrieved sources.
+3. Identify specific supporting evidence quotations/facts from the sources.
+4. Identify any contradicting evidence quotations/facts from the sources.
+5. Identify any conflicts or disagreements between sources.
+6. For each source (1 to ${rankedSources.length}), classify its relationship to the claim: "SUPPORTS", "CONTRADICTS", "NEUTRAL", or "INSUFFICIENT".
+
+Return ONLY valid JSON matching this schema:
+{
+  "verdict": "SUPPORTED" | "CONTRADICTED" | "INSUFFICIENT EVIDENCE",
+  "confidence": <integer 0-100>,
+  "reasoning": "<thorough, clear factual reasoning grounded strictly in the retrieved evidence>",
+  "evidenceSummary": "<concise synthesis of what the retrieved evidence demonstrates>",
+  "supportingEvidence": ["<specific quote or fact from retrieved evidence supporting the claim>"],
+  "contradictingEvidence": ["<specific quote or fact from retrieved evidence contradicting the claim>"],
+  "conflicts": ["<description of any conflicting findings between sources if any>"],
+  "uncertainty": "<any remaining empirical caveats or limitations>",
+  "sourceRelationships": [
+    { "sourceIndex": <1-based index>, "relationship": "SUPPORTS" | "CONTRADICTS" | "NEUTRAL" | "INSUFFICIENT" }
+  ]
+}`;
+
+    let reasoningOutputText = '';
+    try {
+      reasoningOutputText = await callGeminiWithRetry(reasoningPrompt);
+    } catch (geminiErr: unknown) {
+      console.error('[TruthLens] Gemini reasoning error:', geminiErr);
+      if (isGeminiQuotaOrServiceError(geminiErr)) {
+        throw createServiceUnavailableError(
+          geminiErr instanceof Error ? geminiErr.message : String(geminiErr),
+          'Gemini'
+        );
+      }
+      throw geminiErr;
+    }
+
+    // Parse JSON
+    let parsed: GeminiClaimReasoningOutput | null = null;
+    try {
+      const jsonMatch = reasoningOutputText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, reasoningOutputText];
+      parsed = JSON.parse(jsonMatch[1]?.trim() || reasoningOutputText.trim());
+    } catch {
+      const firstBrace = reasoningOutputText.indexOf('{');
+      const lastBrace = reasoningOutputText.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        try {
+          parsed = JSON.parse(reasoningOutputText.substring(firstBrace, lastBrace + 1));
+        } catch (e) {
+          console.warn('[TruthLens] JSON parsing error for claim:', e);
+        }
+      }
+    }
+
+    // Determine verdict
+    let verdict: VerdictType = 'INSUFFICIENT EVIDENCE';
+    if (parsed?.verdict === 'SUPPORTED' || parsed?.verdict === 'CONTRADICTED' || parsed?.verdict === 'INSUFFICIENT EVIDENCE') {
+      verdict = parsed.verdict;
+    } else {
+      const lower = reasoningOutputText.toLowerCase();
+      if (lower.includes('is supported') || lower.includes('confirmed') || lower.includes('true')) {
+        verdict = 'SUPPORTED';
+      } else if (lower.includes('is contradicted') || lower.includes('refuted') || lower.includes('false') || lower.includes('debunked')) {
+        verdict = 'CONTRADICTED';
+      }
+    }
+
+    // Map source relationships
+    const relationshipMap = new Map<number, SourceRelationship>();
+    if (Array.isArray(parsed?.sourceRelationships)) {
+      parsed.sourceRelationships.forEach((sr) => {
+        relationshipMap.set(sr.sourceIndex, sr.relationship);
+      });
+    }
+
+    const finalClaimSources: SourceItem[] = rankedSources.map((s, idx) => {
+      const rel = relationshipMap.get(idx + 1) || (verdict === 'SUPPORTED' ? 'SUPPORTS' : verdict === 'CONTRADICTED' ? 'CONTRADICTS' : 'NEUTRAL');
+      return {
+        ...s,
+        relationshipToClaim: rel,
+      };
     });
+
+    // Confidence calculation with high-tier source weighting
+    let finalConfidence = parsed?.confidence || 80;
+    const highTierCount = finalClaimSources.filter((s) => s.assessment === 'HIGH').length;
+    if (highTierCount >= 2 && (verdict === 'SUPPORTED' || verdict === 'CONTRADICTED')) {
+      finalConfidence = Math.max(finalConfidence, 85);
+    }
+    if (parsed?.conflicts && parsed.conflicts.length > 0) {
+      finalConfidence = Math.min(finalConfidence, 75);
+    }
+    if (verdict === 'INSUFFICIENT EVIDENCE') {
+      finalConfidence = Math.max(25, Math.min(60, finalConfidence));
+    }
+
+    const reasoning = parsed?.reasoning || 'Evaluated against retrieved web search documentation.';
+    const evidenceSummary = parsed?.evidenceSummary || 'Empirical web documentation analyzed for corroboration and refutation.';
+    const supportingEvidence = parsed?.supportingEvidence || [];
+    const contradictingEvidence = parsed?.contradictingEvidence || [];
+    const conflicts = parsed?.conflicts || [];
+    const uncertainty = parsed?.uncertainty || (verdict === 'INSUFFICIENT EVIDENCE' ? 'Lack of conclusive documentation.' : 'Minor variations in secondary reporting.');
+
+    const claimRiskIndicators = detectRiskIndicatorsInText(vc.raw.claimText);
+    if (verdict === 'INSUFFICIENT EVIDENCE') {
+      claimRiskIndicators.push({
+        id: `insuf-${vc.id}`,
+        type: 'lack_of_evidence',
+        title: 'Insufficient Corroborating Evidence',
+        description: 'Retrieved sources do not provide conclusive proof or refutation of this empirical claim.',
+        excerpt: vc.raw.claimText,
+        severity: 'medium',
+      });
+    }
+
+    finalClaimSources.forEach((src) => {
+      if (src.publicationDate) {
+        allTimelineEvents.push({
+          date: src.publicationDate,
+          title: src.title,
+          source: src.sourceName,
+          relationship: src.relationshipToClaim,
+          url: src.url,
+        });
+      }
+    });
+
+    verifiedClaims.push({
+      id: vc.id,
+      claimText: vc.raw.claimText,
+      category: vc.raw.category,
+      statementType: vc.raw.statementType,
+      isVerifiable: true,
+      verdict,
+      confidence: finalConfidence,
+      reasoning,
+      evidenceSummary,
+      supportingEvidence,
+      contradictingEvidence,
+      conflicts,
+      uncertainty,
+      sources: finalClaimSources,
+      riskIndicators: claimRiskIndicators,
+    });
+
+    allSources.push(...finalClaimSources);
   }
 
-  // Deduplicate all sources across all claims
+  // Deduplicate all sources across claims
   const aggregatedSources = rankAndDeduplicateSources(allSources);
 
-  // Overall verdict calculation
+  // Overall verdict aggregation
   const supportedCount = verifiedClaims.filter((c) => c.verdict === 'SUPPORTED').length;
   const contradictedCount = verifiedClaims.filter((c) => c.verdict === 'CONTRADICTED').length;
   const insufficientCount = verifiedClaims.filter((c) => c.verdict === 'INSUFFICIENT EVIDENCE').length;
@@ -422,7 +401,7 @@ Output your analysis strictly as a JSON object matching this schema:
     conflictSummary = `The analyzed material contains both supported claims (${supportedCount}) and contradicted claims (${contradictedCount}), indicating substantial evidentiary discrepancy.`;
   } else if (anyClaimHasConflict) {
     hasConflict = true;
-    conflictSummary = 'Evidence retrieval identified conflicting factual findings or contested interpretations across authoritative sources.';
+    conflictSummary = 'Evidence retrieval identified conflicting factual findings or contested interpretations across sources.';
   }
 
   let overallVerdict: OverallVerdictType;

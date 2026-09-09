@@ -42,13 +42,13 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
         <div>
           <div className="flex items-center gap-2 text-xs font-mono text-stone-500 uppercase">
             <History size={14} />
-            <span>Audit Trail & Persistence</span>
+            <span>Saved Verifications</span>
           </div>
           <h1 className="font-serif text-3xl font-bold text-stone-900 tracking-tight">
             Verification History
           </h1>
           <p className="text-xs text-stone-600">
-            Stored locally in browser persistence. Re-open previous dossiers, export datasets, or purge audit records.
+            Stored locally in browser memory. View previous verification results or clear history.
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
 
       {/* History Items List */}
       {filtered.length === 0 ? (
-        <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center space-y-4">
+        <div className="bg-white border border-stone-200 rounded-xl p-12 text-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 mx-auto">
             <History size={24} />
           </div>
@@ -91,15 +91,15 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
               No Verification Records Found
             </h3>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              Run a claim or article through the TruthLens verification engine to build an ongoing epistemic audit log.
+              Run a claim or article through the TruthLens verification engine to record verification history.
             </p>
           </div>
           <button
             type="button"
             onClick={() => onNavigate('verify')}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-colors cursor-pointer"
           >
-            <span>Verify First Item</span>
+            <span>Verify First Claim</span>
             <ArrowRight size={14} />
           </button>
         </div>
@@ -145,7 +145,7 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({
                     onClick={() => onOpenItem(item.fullResult)}
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-colors cursor-pointer"
                   >
-                    <span>Inspect Dossier</span>
+                    <span>Inspect Result</span>
                     <ArrowRight size={13} />
                   </button>
 

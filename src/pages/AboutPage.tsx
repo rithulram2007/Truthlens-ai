@@ -20,7 +20,7 @@ export const AboutPage: React.FC = () => {
   title = {TruthLens: An Evidence-Grounded AI Misinformation & Claim Verification Platform},
   author = {TruthLens Academic Laboratory},
   year = {2025},
-  note = {Full-stack verification system with Gemini 3.8 Flash Grounded Pipeline},
+  note = {Full-stack verification system with Tavily Search and Gemini 3.8 Flash},
   url = {https://github.com/academic/truthlens}
 }`;
 
@@ -53,8 +53,8 @@ export const AboutPage: React.FC = () => {
     },
     {
       name: 'Modular Evidence Retrieval Layer',
-      tech: 'Gemini 3.8 Flash Google Search Grounding Index',
-      role: 'Queries live indexes to obtain real-world primary sources and authoritative citations without fabricating URLs or quotations.',
+      tech: 'Tavily Search API + Domain Indexer',
+      role: 'Queries live indexes to obtain real-world primary sources and authoritative citations with genuine URLs, published dates, and content snippets.',
     },
     {
       name: 'Source Assessment & Ranking Engine',
@@ -143,14 +143,14 @@ export const AboutPage: React.FC = () => {
         <h2 className="font-serif text-2xl font-semibold text-stone-900 tracking-tight">
           Security & API Key Isolation
         </h2>
-        <div className="bg-stone-900 text-stone-100 rounded-2xl p-6 space-y-3 text-xs leading-relaxed">
+        <div className="bg-stone-900 text-stone-100 rounded-xl p-6 space-y-3 text-xs leading-relaxed">
           <div className="flex items-center gap-2 text-amber-400 font-mono uppercase font-bold text-[11px]">
             <Terminal size={14} />
             <span>Strict Server-Side Key Containment</span>
           </div>
           <p className="text-stone-300">
             TruthLens adheres strictly to enterprise and academic security practices. All Gemini 3.8 Flash SDK
-            invocations and external grounding queries occur strictly on the server-side via Node.js (<code className="text-amber-200">process.env.GEMINI_API_KEY</code>).
+            invocations and Tavily Search API queries occur strictly on the server-side via Node.js (<code className="text-amber-200">process.env.GEMINI_API_KEY</code> and <code className="text-amber-200">process.env.TAVILY_API_KEY</code>).
             No API keys, credentials, or private headers are ever exposed to the client-side JavaScript bundle.
           </p>
         </div>

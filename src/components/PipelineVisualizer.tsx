@@ -26,15 +26,15 @@ export const PIPELINE_STEPS: PipelineStep[] = [
     number: 1,
     id: 'input',
     name: 'Input Detection',
-    shortDesc: 'Classifies claim, URL, or article text without fabricating missing data.',
+    shortDesc: 'Analyzes the input format as an individual claim, news URL, or article text.',
     icon: <FileText size={16} />,
     category: 'Input',
   },
   {
     number: 2,
-    id: 'decomposition',
-    name: 'Claim Decomposition',
-    shortDesc: 'Extracts verifiable assertions, filtering out opinions and predictions.',
+    id: 'extraction',
+    name: 'Claim Extraction',
+    shortDesc: 'Extracts verifiable factual assertions while separating opinion or subjective language.',
     icon: <Filter size={16} />,
     category: 'Decomposition',
   },
@@ -42,7 +42,7 @@ export const PIPELINE_STEPS: PipelineStep[] = [
     number: 3,
     id: 'retrieval',
     name: 'Evidence Retrieval',
-    shortDesc: 'Grounds searches against live indexes, official registries, and journals.',
+    shortDesc: 'Queries live web sources via Tavily Search API to collect real evidence and citations.',
     icon: <Search size={16} />,
     category: 'Evidence',
   },
@@ -50,7 +50,7 @@ export const PIPELINE_STEPS: PipelineStep[] = [
     number: 4,
     id: 'assessment',
     name: 'Source Assessment',
-    shortDesc: 'Evaluates domains (Gov, Academic, News) into High/Medium/Low indicators.',
+    shortDesc: 'Evaluates institutional domains (governmental, academic, news agencies) for authority.',
     icon: <ShieldCheck size={16} />,
     category: 'Evidence',
   },
@@ -58,15 +58,15 @@ export const PIPELINE_STEPS: PipelineStep[] = [
     number: 5,
     id: 'ranking',
     name: 'Evidence Ranking',
-    shortDesc: 'Ranks and deduplicates sources by evidentiary weight and relevance.',
+    shortDesc: 'Ranks and filters retrieved evidence based on domain credibility and relevance.',
     icon: <BarChart3 size={16} />,
     category: 'Evidence',
   },
   {
     number: 6,
     id: 'comparison',
-    name: 'Claim-Evidence Comparison',
-    shortDesc: 'Cross-examines each claim against retrieved empirical citations.',
+    name: 'Evidence Comparison',
+    shortDesc: 'Compares each extracted claim against the retrieved empirical evidence snippets.',
     icon: <GitCompare size={16} />,
     category: 'Reasoning',
   },
@@ -74,31 +74,31 @@ export const PIPELINE_STEPS: PipelineStep[] = [
     number: 7,
     id: 'conflict',
     name: 'Conflict Detection',
-    shortDesc: 'Identifies discrepancies and flags explicit CONFLICTING EVIDENCE.',
+    shortDesc: 'Identifies discrepancies across sources and flags conflicting evidence.',
     icon: <AlertTriangle size={16} />,
     category: 'Reasoning',
   },
   {
     number: 8,
-    id: 'gemini_reasoning',
-    name: 'Gemini 3.8 Reasoning',
-    shortDesc: 'Generates evidence-bounded rationale strictly from retrieved sources.',
+    id: 'reasoning',
+    name: 'Evidence-Grounded Reasoning',
+    shortDesc: 'Applies Gemini model reasoning strictly over the retrieved evidence citations.',
     icon: <BrainCircuit size={16} />,
     category: 'Reasoning',
   },
   {
     number: 9,
     id: 'verdict',
-    name: 'Verdict & Confidence',
-    shortDesc: 'Assigns SUPPORTED, CONTRADICTED, or INSUFFICIENT EVIDENCE.',
+    name: 'Verification Result',
+    shortDesc: 'Determines the verdict (SUPPORTED, CONTRADICTED, or INSUFFICIENT EVIDENCE) and confidence.',
     icon: <Award size={16} />,
     category: 'Output',
   },
   {
     number: 10,
-    id: 'traceability',
-    name: 'Traceable Audit Ledger',
-    shortDesc: 'Renders complete source links, timeline, and academic export report.',
+    id: 'sources',
+    name: 'Sources',
+    shortDesc: 'Compiles verified source links, citations, and exportable verification records.',
     icon: <Link2 size={16} />,
     category: 'Output',
   },
@@ -128,14 +128,14 @@ export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-stone-200 gap-2">
         <div>
           <h3 className="font-serif text-lg font-semibold text-stone-900 tracking-tight">
-            How TruthLens Works
+            Verification Pipeline
           </h3>
           <p className="text-xs text-stone-500">
-            A 10-stage epistemological verification pipeline built for academic rigor
+            A transparent workflow: from input analysis to evidence-grounded verification
           </p>
         </div>
-        <span className="text-[11px] font-mono px-2.5 py-1 bg-stone-100 border border-stone-200 rounded text-stone-600 self-start sm:self-auto">
-          Non-Chatbot Pipeline
+        <span className="text-[11px] font-mono px-2 py-0.5 bg-stone-100 border border-stone-200 rounded text-stone-600 self-start sm:self-auto">
+          System Workflow
         </span>
       </div>
 
@@ -147,13 +147,13 @@ export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({
             const isPassed = activeStep ? activeStep > step.number : false;
             const isSelected = selectedStep.number === step.number;
 
-            let badgeStyles = 'bg-stone-50 border-stone-200 text-stone-600 hover:border-stone-400';
+            let badgeStyles = 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400';
             if (isCurrent) {
-              badgeStyles = 'bg-amber-100 border-amber-500 text-amber-900 ring-2 ring-amber-300 ring-offset-1';
+              badgeStyles = 'bg-stone-900 border-stone-900 text-white shadow-xs';
             } else if (isPassed) {
-              badgeStyles = 'bg-emerald-50 border-emerald-300 text-emerald-800';
+              badgeStyles = 'bg-emerald-50/70 border-emerald-300 text-emerald-900';
             } else if (isSelected) {
-              badgeStyles = 'bg-stone-900 border-stone-900 text-white';
+              badgeStyles = 'bg-stone-100 border-stone-400 text-stone-950 font-semibold';
             }
 
             return (
@@ -177,7 +177,7 @@ export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({
                   </span>
                 </button>
                 {idx < PIPELINE_STEPS.length - 1 && (
-                  <div className="w-3 h-0.5 bg-stone-300 shrink-0" />
+                  <div className="w-3 h-0.5 bg-stone-200 shrink-0" />
                 )}
               </React.Fragment>
             );
@@ -188,11 +188,11 @@ export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({
       {/* Selected / Current step detail banner */}
       <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-full bg-stone-900 text-white font-mono text-xs flex items-center justify-center font-bold">
+          <span className="w-5 h-5 rounded bg-stone-900 text-white font-mono text-[11px] flex items-center justify-center font-bold">
             {selectedStep.number}
           </span>
           <div>
-            <span className="font-bold text-stone-900">{selectedStep.name}: </span>
+            <span className="font-semibold text-stone-900">{selectedStep.name}: </span>
             <span className="text-stone-600">{selectedStep.shortDesc}</span>
           </div>
         </div>

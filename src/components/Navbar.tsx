@@ -62,20 +62,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onSelectPage('home')}
-            className="flex items-center gap-3 group text-left cursor-pointer"
+            className="flex items-center gap-3 text-left cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:border-amber-400 transition-colors">
-              <Shield size={20} />
+            <div className="w-8 h-8 rounded-md bg-stone-800 border border-stone-700 flex items-center justify-center text-stone-200">
+              <Shield size={18} />
             </div>
             <div>
-              <div className="font-serif font-bold text-lg tracking-tight text-stone-50 flex items-center gap-2">
-                <span>TruthLens</span>
-                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60 font-semibold tracking-wider">
-                  Academic v1.0
-                </span>
+              <div className="font-serif font-bold text-lg tracking-tight text-stone-50">
+                TruthLens
               </div>
-              <p className="text-[10px] font-sans text-stone-400 tracking-wide hidden sm:block">
-                Evidence-Grounded Misinformation & Verification Platform
+              <p className="text-[11px] text-stone-400 font-sans hidden sm:block">
+                AI-Assisted Claim Verification
               </p>
             </div>
           </button>
@@ -92,12 +89,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => {
                     onSelectPage(item.id);
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-stone-800 text-amber-300 shadow-xs font-semibold'
+                      ? 'bg-stone-800 text-stone-100 font-semibold'
                       : item.disabled
                       ? 'text-stone-600 cursor-not-allowed opacity-50'
-                      : 'text-stone-300 hover:text-stone-50 hover:bg-stone-800/60'
+                      : 'text-stone-300 hover:text-stone-100 hover:bg-stone-800/50'
                   }`}
                 >
                   {item.icon}
@@ -107,18 +104,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Right Header Status */}
+          {/* Right Header Status - subtle indicator */}
           <div className="hidden lg:flex items-center gap-3">
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-800/80 border border-stone-700/60 text-[11px] font-mono text-stone-300"
-              title="Server & Gemini 3.8 Flash Grounding Status"
-            >
-              <Activity
-                size={12}
-                className={serverOnline ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}
+            <span className="text-[11px] font-mono text-stone-400 flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  serverOnline ? 'bg-emerald-400' : 'bg-stone-500'
+                }`}
               />
-              <span>{serverOnline ? 'Gemini 3.8 Grounded' : 'Initializing...'}</span>
-            </div>
+              <span>{serverOnline ? 'Engine Online' : 'Connecting...'}</span>
+            </span>
           </div>
 
           {/* Mobile Menu Button */}
@@ -126,10 +121,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors"
+              className="p-2 rounded-md text-stone-400 hover:text-stone-100 hover:bg-stone-800 transition-colors"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>

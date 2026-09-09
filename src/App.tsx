@@ -180,10 +180,10 @@ export default function App() {
               <p className="text-stone-400 text-xs leading-relaxed max-w-md font-sans">
                 An evidence-grounded misinformation and claim verification system engineered for
                 academic research, journalism laboratories, and fact-checking evaluations. Powered by
-                an epistemic 10-stage pipeline with Gemini 3.8 Flash Search Grounding.
+                Tavily Search API evidence retrieval and Gemini 3.8 Flash reasoning.
               </p>
               <div className="text-[11px] font-mono text-stone-500">
-                Rule: Absence of evidence is treated as INSUFFICIENT EVIDENCE, never as falsehood.
+                Rule: Absence of evidence alone does not establish that a claim is false.
               </div>
             </div>
 
@@ -274,7 +274,7 @@ export default function App() {
                 </li>
                 <li>
                   <span className="text-stone-500 font-mono text-[11px]">
-                    Model: gemini-3.8-flash (Search Grounded)
+                    Model: gemini-3.8-flash (Evidence Reasoning)
                   </span>
                 </li>
                 <li>
@@ -288,7 +288,7 @@ export default function App() {
 
           <div className="pt-6 border-t border-stone-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-stone-500 text-[11px] font-mono">
             <div>
-              TruthLens © {new Date().getFullYear()} • Academic Fact-Checking & Epistemic Audit Engine
+              TruthLens © {new Date().getFullYear()} • Academic Fact-Checking & Verification Platform
             </div>
             <div>Strict Evidence Grounding • No Ungrounded Hallucinations</div>
           </div>

@@ -55,13 +55,13 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             </span>
             <ChevronRight size={12} />
             <span className="hover:text-stone-800 cursor-pointer" onClick={() => onNavigate('verify')}>
-              Verification
+              Verify
             </span>
             <ChevronRight size={12} />
-            <span className="text-stone-900 font-semibold">Dossier #{result.id.slice(-6)}</span>
+            <span className="text-stone-900 font-semibold">Result #{result.id.slice(-6)}</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight">
-            Academic Verification Dashboard
+            Verification Results
           </h1>
         </div>
 
@@ -69,29 +69,29 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           <button
             type="button"
             onClick={onNewVerification}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white hover:bg-stone-100 text-stone-700 text-xs font-medium border border-stone-200 transition-colors cursor-pointer"
           >
             <RotateCcw size={13} />
-            <span>New Query</span>
+            <span>New Verification</span>
           </button>
           <button
             type="button"
             onClick={() => setShowReportModal(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
           >
             <FileCheck2 size={14} />
-            <span>Generate Official Report</span>
+            <span>Export Report</span>
           </button>
         </div>
       </div>
 
       {/* Executive Verdict Banner */}
-      <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs space-y-6">
+      <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-stone-200">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono uppercase tracking-wider text-stone-500 font-semibold">
-                Overall Epistemic Verdict
+                Verification Result
               </span>
               <span className="text-[11px] font-mono text-stone-400">
                 • Verified at {formattedDate}
@@ -102,7 +102,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               {result.hasEvidenceConflict && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-900 border border-purple-300 font-mono text-xs font-semibold">
                   <AlertTriangle size={13} className="text-purple-600" />
-                  Evidence Discrepancy Flagged
+                  Conflict Detected
                 </span>
               )}
             </div>
@@ -114,23 +114,23 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           </div>
 
           {/* System Confidence Meter */}
-          <div className="w-full lg:w-72 bg-stone-50 border border-stone-200 rounded-xl p-4">
+          <div className="w-full lg:w-72 bg-stone-50 border border-stone-200 rounded-lg p-4">
             <ConfidenceMeter score={result.overallConfidence} size="lg" />
           </div>
         </div>
 
         {/* Metric Counter Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-1">
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
             <span className="text-[11px] font-mono text-stone-500 uppercase">Claims Analyzed</span>
             <div className="font-serif text-2xl font-bold text-stone-900">
               {result.claimsAnalyzedCount}
             </div>
-            <span className="text-[10px] text-stone-500">Atomic empirical statements</span>
+            <span className="text-[10px] text-stone-500">Atomic factual statements</span>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-1">
-            <span className="text-[11px] font-mono text-stone-500 uppercase">Supported / False</span>
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
+            <span className="text-[11px] font-mono text-stone-500 uppercase">Supported / Contradicted</span>
             <div className="font-serif text-2xl font-bold text-stone-900 flex items-center gap-1.5">
               <span className="text-emerald-700">{result.counts.supported}</span>
               <span className="text-stone-300 font-normal">/</span>
@@ -141,15 +141,15 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             </span>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-1">
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
             <span className="text-[11px] font-mono text-stone-500 uppercase">Sources Analyzed</span>
             <div className="font-serif text-2xl font-bold text-stone-900">
               {result.sourcesAnalyzedCount}
             </div>
-            <span className="text-[10px] text-stone-500">Authoritative citations</span>
+            <span className="text-[10px] text-stone-500">Live authoritative citations</span>
           </div>
 
-          <div className="bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-1">
+          <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
             <span className="text-[11px] font-mono text-stone-500 uppercase">Risk Indicators</span>
             <div className="font-serif text-2xl font-bold text-amber-700">
               {result.aggregatedRiskIndicators.length}
@@ -188,19 +188,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               : 'text-stone-500 hover:text-stone-900'
           }`}
         >
-          Claim-by-Claim Breakdown ({result.claims.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveSection('charts')}
-          className={`pb-3 px-1 transition-all cursor-pointer flex items-center gap-1.5 ${
-            activeSection === 'charts'
-              ? 'border-b-2 border-stone-900 text-stone-900 font-bold'
-              : 'text-stone-500 hover:text-stone-900'
-          }`}
-        >
-          Visual Analytics & Charts (4)
+          Claim-by-Claim Analysis ({result.claims.length})
         </button>
 
         <button
@@ -212,7 +200,19 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               : 'text-stone-500 hover:text-stone-900'
           }`}
         >
-          Source Comparison Table ({result.aggregatedSources.length})
+          Sources ({result.aggregatedSources.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSection('charts')}
+          className={`pb-3 px-1 transition-all cursor-pointer flex items-center gap-1.5 ${
+            activeSection === 'charts'
+              ? 'border-b-2 border-stone-900 text-stone-900 font-bold'
+              : 'text-stone-500 hover:text-stone-900'
+          }`}
+        >
+          Analytics
         </button>
 
         <button
@@ -247,10 +247,10 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-serif text-lg font-semibold text-stone-900">
-                  Decomposed Verifiable Claims
+                  Extracted Claims
                 </h3>
                 <p className="text-xs text-stone-500">
-                  Expand each claim to inspect AI grounded reasoning, evidence items, and traceable sources
+                  Expand each claim to inspect evidence-grounded reasoning, citations, and source reliability
                 </p>
               </div>
               <span className="text-xs font-mono text-stone-500 bg-stone-100 px-2.5 py-1 rounded border border-stone-200">

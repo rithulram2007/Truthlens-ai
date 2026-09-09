@@ -5,6 +5,7 @@ import { extractArticle } from './server/pipeline/articleExtractor';
 import { extractClaimsFromText } from './server/pipeline/claimExtractor';
 import { verifyClaimsPipeline } from './server/pipeline/verificationEngine';
 import { isGeminiQuotaOrServiceError } from './server/gemini';
+import { isTavilyQuotaOrServiceError } from './server/tavily';
 
 const PORT = 3000;
 
@@ -21,6 +22,7 @@ async function startServer() {
       service: 'TruthLens Verification Engine',
       timestamp: new Date().toISOString(),
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+      hasTavilyKey: Boolean(process.env.TAVILY_API_KEY),
     });
   });
 
@@ -68,14 +70,18 @@ async function startServer() {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[TruthLens] Error in verification pipeline:', msg);
 
-      if (isGeminiQuotaOrServiceError(err)) {
+      if (isGeminiQuotaOrServiceError(err) || isTavilyQuotaOrServiceError(err) || (err as Record<string, unknown>)?.isQuotaError) {
+        const errorObj = err as Record<string, unknown>;
+        const service = (errorObj?.service as string) || (msg.toLowerCase().includes('tavily') ? 'Tavily' : 'Gemini');
         res.status(429).json({
           error: 'Verification Service Unavailable',
           code: 'RESOURCE_EXHAUSTED',
           isQuotaError: true,
-          message:
-            'Verification Service Unavailable: The Gemini API quota is currently exhausted (HTTP 429 RESOURCE_EXHAUSTED).',
-          details: msg,
+          service,
+          message: msg.startsWith('Verification Service Unavailable')
+            ? msg
+            : `Verification Service Unavailable: ${service} quota is currently exhausted or unavailable.`,
+          details: (errorObj?.details as string) || msg,
         });
         return;
       }

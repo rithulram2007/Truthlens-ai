@@ -167,43 +167,38 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Page Heading */}
       <div className="space-y-1">
-        <div className="flex items-center gap-2 text-xs font-mono text-stone-500 uppercase tracking-wider">
-          <span>Verification Console</span>
-          <span>•</span>
-          <span className="text-amber-700 font-semibold">Gemini 3.8 Flash Grounded</span>
-        </div>
         <h1 className="font-serif text-3xl font-bold text-stone-900 tracking-tight">
-          Submit Material for Verification
+          Verify Claim or Article
         </h1>
         <p className="text-sm text-stone-600 font-sans">
-          Paste an individual factual assertion, an external article URL, or comprehensive news text.
-          TruthLens will automatically decompose assertions, retrieve primary evidence, and assess conflicts.
+          Enter an individual factual statement, an external news URL, or full article text.
+          TruthLens will extract verifiable claims, retrieve evidence via Tavily, evaluate source credibility, and check for conflicts.
         </p>
       </div>
 
       {/* Verification Form Card */}
-      <div className="bg-white border border-stone-200 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl shadow-xs overflow-hidden">
         {/* Detection Header Tabs */}
-        <div className="p-3 bg-stone-100/70 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+        <div className="p-3 bg-stone-50 border-b border-stone-200 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-stone-500">Auto-Detected Mode:</span>
+            <span className="text-stone-500">Detected Format:</span>
             <span
               className={`px-2.5 py-1 rounded-md font-bold uppercase tracking-wider text-[11px] border ${
                 detectedType === 'url'
                   ? 'bg-sky-100 text-sky-800 border-sky-300'
                   : detectedType === 'article'
                   ? 'bg-purple-100 text-purple-800 border-purple-300'
-                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-stone-100 text-stone-800 border-stone-300'
               }`}
             >
               {detectedType === 'url' && <Globe size={11} className="inline mr-1" />}
               {detectedType === 'article' && <FileText size={11} className="inline mr-1" />}
               {detectedType === 'claim' && <Search size={11} className="inline mr-1" />}
               {detectedType === 'url'
-                ? 'News / Article URL'
+                ? 'News URL'
                 : detectedType === 'article'
-                ? 'Full Article Text'
-                : 'Individual Factual Claim'}
+                ? 'Article Text'
+                : 'Factual Claim'}
             </span>
           </div>
 
@@ -213,7 +208,7 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
               type="button"
               disabled={isAnalyzing}
               onClick={() => setSampleInput('claim')}
-              className="px-2 py-0.5 rounded bg-white hover:bg-stone-200 border border-stone-200 text-stone-700 cursor-pointer"
+              className="px-2 py-0.5 rounded bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 cursor-pointer"
             >
               Claim
             </button>
@@ -221,7 +216,7 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
               type="button"
               disabled={isAnalyzing}
               onClick={() => setSampleInput('url')}
-              className="px-2 py-0.5 rounded bg-white hover:bg-stone-200 border border-stone-200 text-stone-700 cursor-pointer"
+              className="px-2 py-0.5 rounded bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 cursor-pointer"
             >
               URL
             </button>
@@ -229,7 +224,7 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
               type="button"
               disabled={isAnalyzing}
               onClick={() => setSampleInput('article')}
-              className="px-2 py-0.5 rounded bg-white hover:bg-stone-200 border border-stone-200 text-stone-700 cursor-pointer"
+              className="px-2 py-0.5 rounded bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 cursor-pointer"
             >
               Article
             </button>
@@ -249,37 +244,37 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
                   ? 'https://example.com/news/article...'
                   : 'Enter a factual claim (e.g. "NASA landed astronauts on the Moon in 1969") or paste article text...'
               }
-              className="w-full p-4 text-sm font-sans text-stone-900 bg-stone-50/50 border border-stone-200 rounded-xl focus:bg-white focus:outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-500 transition-all placeholder:text-stone-400 resize-y"
+              className="w-full p-4 text-sm font-sans text-stone-900 bg-stone-50/50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:border-stone-500 focus:ring-1 focus:ring-stone-500 transition-all placeholder:text-stone-400 resize-y"
             />
             <div className="flex items-center justify-between text-[11px] font-mono text-stone-400 pt-1 px-1">
               <span>Characters: {inputText.length}</span>
-              <span>Epistemic standard: Empirical, Falsifiable propositions</span>
+              <span>Empirical, falsifiable propositions</span>
             </div>
           </div>
 
           {/* Action Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div className="text-xs text-stone-500 flex items-center gap-1.5">
-              <ShieldCheck size={15} className="text-emerald-600" />
+              <ShieldCheck size={14} className="text-emerald-700" />
               <span>
-                Sources prioritized: Government (.gov), Scientific (.edu, Nature), and Reputable Global Agencies.
+                Sources prioritized: Government (.gov), Academic/Scientific (.edu, Nature), and Reputable Global Agencies.
               </span>
             </div>
 
             <button
               type="submit"
               disabled={isAnalyzing || !inputText.trim()}
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-sm cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-stone-900 hover:bg-stone-800 disabled:bg-stone-300 disabled:cursor-not-allowed text-white text-sm font-medium transition-all shadow-xs cursor-pointer shrink-0"
             >
               {isAnalyzing ? (
                 <>
-                  <RotateCw size={16} className="animate-spin text-amber-300" />
-                  <span>Executing Pipeline...</span>
+                  <RotateCw size={15} className="animate-spin text-amber-300" />
+                  <span>Verifying...</span>
                 </>
               ) : (
                 <>
-                  <span>Begin Verification</span>
-                  <ArrowRight size={16} />
+                  <span>Verify Claim</span>
+                  <ArrowRight size={15} />
                 </>
               )}
             </button>
@@ -289,26 +284,26 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
 
       {/* Live Pipeline Stepper during analysis */}
       {isAnalyzing && (
-        <div className="bg-white border border-stone-300 rounded-2xl p-6 shadow-sm space-y-5 animate-in fade-in">
+        <div className="bg-white border border-stone-200 rounded-xl p-6 shadow-xs space-y-5 animate-in fade-in">
           <div className="flex items-center justify-between border-b border-stone-200 pb-3">
             <div className="flex items-center gap-2.5">
               <RotateCw size={18} className="animate-spin text-amber-600" />
               <h3 className="font-serif text-base font-semibold text-stone-900">
-                Live Verification Execution in Progress
+                Verification in Progress
               </h3>
             </div>
-            <span className="font-mono text-xs text-stone-500 bg-stone-100 px-2.5 py-1 rounded border border-stone-200">
-              Stage 0{activeStep} of 10
+            <span className="font-mono text-xs text-stone-500 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+              Stage {activeStep} of 10
             </span>
           </div>
 
           {/* Active Step Indicator */}
-          <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-600 text-white font-mono font-bold flex items-center justify-center shrink-0 text-xs">
-              0{activeStep}
+          <div className="bg-amber-50/70 border border-amber-200 rounded-lg p-3.5 flex items-start gap-3">
+            <div className="w-7 h-7 rounded-full bg-stone-900 text-white font-mono font-bold flex items-center justify-center shrink-0 text-xs">
+              {activeStep}
             </div>
             <div className="space-y-0.5">
-              <div className="text-xs font-mono uppercase tracking-wider text-amber-800 font-semibold">
+              <div className="text-xs font-mono uppercase tracking-wider text-amber-900 font-semibold">
                 {PIPELINE_STEPS[activeStep - 1]?.category} Stage:
               </div>
               <div className="font-semibold text-stone-900 text-sm">
@@ -326,15 +321,15 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
 
       {/* Error & Service Unavailable Display */}
       {errorMsg && isQuotaError && (
-        <div className="bg-amber-50/90 border-2 border-amber-400/80 rounded-2xl p-6 space-y-4 shadow-sm text-stone-900">
+        <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-6 space-y-4 shadow-xs text-stone-900">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <ServerOff size={22} />
+              <div className="w-9 h-9 rounded-lg bg-amber-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ServerOff size={20} />
               </div>
               <div>
                 <span className="text-[11px] font-mono uppercase tracking-wider text-amber-800 font-bold">
-                  API Quota Exhausted
+                  API Limitation
                 </span>
                 <h3 className="font-serif text-xl font-bold text-stone-950">
                   Verification Service Unavailable
@@ -344,29 +339,29 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
 
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono text-xs font-semibold self-start sm:self-auto">
               <Clock size={13} />
-              HTTP 429 RESOURCE_EXHAUSTED
+              HTTP 429 / 503
             </span>
           </div>
 
           <div className="space-y-3 text-xs leading-relaxed text-stone-700">
             <p className="text-sm text-stone-800">
-              The verification pipeline is temporarily unable to execute because the Gemini API quota is exhausted. Live evidence retrieval via Google Search Grounding and neural claim verification could not run.
+              The verification pipeline could not complete because the upstream API is experiencing high demand or quota limitations. Live evidence retrieval and reasoning could not run at this time.
             </p>
 
             {/* Epistemic Rubric Distinction Callout */}
-            <div className="bg-white/80 border border-amber-300/80 rounded-xl p-3.5 space-y-1">
+            <div className="bg-white/80 border border-amber-200 rounded-lg p-3.5 space-y-1">
               <div className="flex items-center gap-2 text-amber-900 font-semibold text-xs font-mono">
                 <ShieldCheck size={14} className="text-amber-700" />
                 <span>Epistemic Distinction: Why this is NOT "INSUFFICIENT EVIDENCE"</span>
               </div>
               <p className="text-stone-600 text-[11px] leading-relaxed">
-                Under TruthLens's academic methodology, <strong>INSUFFICIENT EVIDENCE</strong> is strictly reserved for instances where the verification pipeline executed successfully against authoritative databases, but the retrieved empirical data was scarce or inconclusive. Because this request could not execute due to API quota exhaustion, no epistemic verdict has been assigned.
+                Under TruthLens's academic methodology, <strong>INSUFFICIENT EVIDENCE</strong> is strictly reserved for instances where the verification pipeline executed successfully against authoritative sources, but the retrieved empirical data was scarce or inconclusive. Because this request could not execute due to an upstream service interruption, no epistemic verdict has been assigned.
               </p>
             </div>
 
             <div className="flex items-center gap-2 text-[11px] text-stone-500 font-mono">
               <Key size={13} className="text-stone-400" />
-              <span>Remedy: Provide a billing-enabled API key in Settings &gt; Secrets, or retry once quota resets.</span>
+              <span>Remedy: Check API key configuration or retry after a brief moment.</span>
             </div>
           </div>
 
@@ -374,7 +369,7 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
             <button
               type="button"
               onClick={handleStartVerification}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-all shadow-xs cursor-pointer"
             >
               <RotateCw size={13} />
               <span>Retry Verification</span>
@@ -383,10 +378,10 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
             <button
               type="button"
               onClick={() => onVerificationComplete(SEED_VERIFICATION_RESULT)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-stone-50 text-stone-800 text-xs font-medium border border-stone-300 transition-colors shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white hover:bg-stone-50 text-stone-800 text-xs font-medium border border-stone-300 transition-colors shadow-xs cursor-pointer"
             >
               <FileText size={13} />
-              <span>Inspect Academic Benchmark Dossier</span>
+              <span>Inspect Sample Verification</span>
               <ArrowRight size={13} />
             </button>
           </div>

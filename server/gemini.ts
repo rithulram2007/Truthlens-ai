@@ -43,14 +43,24 @@ export function isGeminiQuotaOrServiceError(err: unknown): boolean {
   );
 }
 
-export function createServiceUnavailableError(originalMessage?: string): Error {
-  const err = new Error(
-    'Verification Service Unavailable: The Gemini API quota is currently exhausted (HTTP 429 RESOURCE_EXHAUSTED).'
-  );
+export function createServiceUnavailableError(
+  originalMessage?: string,
+  serviceProvider?: 'Tavily' | 'Gemini'
+): Error {
+  const isTavily = serviceProvider === 'Tavily' || originalMessage?.toLowerCase().includes('tavily');
+  const is503 = originalMessage?.includes('503') || originalMessage?.includes('UNAVAILABLE') || originalMessage?.includes('high demand');
+  const providerLabel = isTavily ? 'Tavily Search API' : 'Gemini reasoning model';
+
+  const message = is503
+    ? `Verification Service Unavailable: ${providerLabel} is currently experiencing temporary high demand (503 UNAVAILABLE). Please try again shortly.`
+    : `Verification Service Unavailable: ${providerLabel} quota is currently exhausted (HTTP 429 RESOURCE_EXHAUSTED).`;
+
+  const err = new Error(message);
   Object.assign(err, {
-    status: 429,
-    code: 'RESOURCE_EXHAUSTED',
+    status: is503 ? 503 : 429,
+    code: is503 ? 'UNAVAILABLE' : 'RESOURCE_EXHAUSTED',
     isQuotaError: true,
+    service: isTavily ? 'Tavily' : 'Gemini',
     details: originalMessage || '',
   });
   return err;

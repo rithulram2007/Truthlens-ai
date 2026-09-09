@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PipelineVisualizer } from '../components/PipelineVisualizer';
 import {
-  ShieldCheck,
   Search,
   ArrowRight,
   Database,
@@ -9,8 +8,8 @@ import {
   Scale,
   BrainCircuit,
   FileText,
-  AlertCircle,
-  ExternalLink,
+  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import { PageTab } from '../components/Navbar';
 
@@ -20,30 +19,32 @@ interface HomePageProps {
 }
 
 export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }) => {
+  const [quickInput, setQuickInput] = useState('');
+
   const sampleScenarios = [
     {
       title: 'Historical Discovery',
-      type: 'Single Factual Claim',
+      type: 'Factual Claim',
       text: 'Penicillin was discovered by Alexander Fleming in 1928 after mold contaminated a Staphylococcus culture plate.',
       expectedVerdict: 'SUPPORTED',
       category: 'Science',
     },
     {
       title: 'Popular Space Myth',
-      type: 'Single Factual Claim',
+      type: 'Factual Claim',
       text: 'The Great Wall of China is clearly visible from the Moon with the naked human eye.',
       expectedVerdict: 'CONTRADICTED',
       category: 'Science / History',
     },
     {
-      title: 'Complex Lifecycle Debate',
+      title: 'Lifecycle Comparison Debate',
       type: 'Technical Comparison',
       text: 'Electric vehicles have a higher lifetime carbon footprint than internal combustion engine vehicles when battery manufacturing is included.',
       expectedVerdict: 'CONFLICTING EVIDENCE',
       category: 'Environment / Tech',
     },
     {
-      title: 'Fictitious Archeological Claim',
+      title: 'Uncorroborated Assertion',
       type: 'Unproven Assertion',
       text: 'Ancient Roman engineers regularly used piezoelectric quartz energy generators inside their aqueduct tunnels.',
       expectedVerdict: 'INSUFFICIENT EVIDENCE',
@@ -51,69 +52,81 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
     },
   ];
 
+  const handleQuickSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickInput.trim()) {
+      onSelectSample(quickInput.trim());
+      onNavigate('verify');
+    }
+  };
+
   return (
-    <div className="space-y-10 pb-16">
-      {/* Hero Section */}
-      <section className="bg-white border-b border-stone-200 py-12 sm:py-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-xs font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Academic Research & Epistemic Fact-Checking Engine
+    <div className="space-y-12 pb-16">
+      {/* Product Overview Section */}
+      <section className="bg-white border-b border-stone-200 py-10 sm:py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+          <div className="space-y-2">
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight">
+              TruthLens
+            </h1>
+            <p className="text-lg font-medium text-stone-700">
+              AI-Assisted Claim Verification
+            </p>
+            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-sans max-w-2xl">
+              Analyze claims and articles using retrieved evidence and transparent verification.
+              TruthLens extracts factual assertions, retrieves live authoritative sources, evaluates domain
+              credibility, and provides evidence-grounded verdicts.
+            </p>
           </div>
 
-          <h1 className="font-serif text-3xl sm:text-5xl font-bold text-stone-950 tracking-tight leading-tight max-w-3xl mx-auto">
-            Evidence-Grounded Misinformation & Claim Verification
-          </h1>
-
-          <p className="text-base sm:text-lg text-stone-600 max-w-2xl mx-auto font-sans leading-relaxed">
-            TruthLens is an academic platform designed to dismantle misinformation through a
-            10-stage verifiable pipeline: decomposing text into atomic claims, querying live authoritative
-            sources, assessing source credibility, and performing grounded reasoning with Gemini 3.8 Flash.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => onNavigate('verify')}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-sm transition-all shadow-sm hover:shadow cursor-pointer"
-            >
-              <Search size={16} />
-              <span>Verify Claim or Article</span>
-              <ArrowRight size={16} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('methodology')}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-stone-50 text-stone-800 font-medium text-sm border border-stone-200 transition-colors cursor-pointer"
-            >
-              <Scale size={16} />
-              <span>Epistemological Methodology</span>
-            </button>
-          </div>
-
-          {/* Core Philosophy Banner */}
-          <div className="pt-4 max-w-xl mx-auto">
-            <div className="text-xs text-stone-500 font-mono bg-stone-50 border border-stone-200 rounded-lg p-2.5 flex items-center justify-center gap-2">
-              <AlertCircle size={14} className="text-stone-400 shrink-0" />
-              <span>
-                <strong>Non-Chatbot Architecture:</strong> Answers are bounded strictly by retrieved empirical citations, never hallucinated knowledge.
-              </span>
+          {/* Quick verification form */}
+          <form onSubmit={handleQuickSubmit} className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-3.5 text-stone-400" />
+                <input
+                  type="text"
+                  value={quickInput}
+                  onChange={(e) => setQuickInput(e.target.value)}
+                  placeholder="Enter a claim (e.g., 'Water freezes at 0°C') or news URL..."
+                  className="w-full pl-10 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-300 rounded-lg focus:bg-white focus:outline-none focus:border-stone-500 text-stone-900"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-sm transition-colors cursor-pointer shrink-0"
+              >
+                <span>Verify Claim</span>
+                <ArrowRight size={15} />
+              </button>
             </div>
-          </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-emerald-700" />
+                <span>Sources retrieved live from verified web databases and registries</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onNavigate('methodology')}
+                className="text-stone-600 hover:text-stone-900 underline cursor-pointer"
+              >
+                View Verification Methodology
+              </button>
+            </div>
+          </form>
         </div>
       </section>
 
-      {/* Interactive 10-Stage Pipeline Section */}
+      {/* Verification Pipeline Workflow */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-serif text-2xl font-bold text-stone-900 tracking-tight">
-              The Verification Pipeline
+            <h2 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
+              Verification Workflow
             </h2>
             <p className="text-xs text-stone-600">
-              Traceable flow from raw user input to final verifiable dossier
+              The systematic pipeline from raw input to verified evidence and verdict
             </p>
           </div>
           <button
@@ -121,7 +134,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
             onClick={() => onNavigate('methodology')}
             className="text-xs font-mono text-stone-600 hover:text-stone-900 underline flex items-center gap-1 cursor-pointer"
           >
-            Detailed Rubrics & Math
+            Methodology Details
             <ArrowRight size={12} />
           </button>
         </div>
@@ -129,14 +142,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
         <PipelineVisualizer interactive={true} />
       </section>
 
-      {/* Preset Academic Test Scenarios */}
+      {/* Benchmark Test Scenarios */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <div>
-          <h2 className="font-serif text-2xl font-bold text-stone-900 tracking-tight">
-            Academic Benchmark Scenarios
+          <h2 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
+            Benchmark Test Scenarios
           </h2>
           <p className="text-xs text-stone-600">
-            Click any curated benchmark to observe how the engine decomposes claims, tests evidence, and detects conflicts
+            Select a verified benchmark to test claim extraction, evidence retrieval, and conflict detection
           </p>
         </div>
 
@@ -148,7 +161,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
                 onSelectSample(scenario.text);
                 onNavigate('verify');
               }}
-              className="bg-white border border-stone-200 hover:border-stone-400 rounded-xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
+              className="bg-white border border-stone-200 hover:border-stone-400 rounded-lg p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
@@ -166,11 +179,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
                         : 'bg-amber-50 text-amber-800 border-amber-200'
                     }`}
                   >
-                    Target: {scenario.expectedVerdict}
+                    Expected: {scenario.expectedVerdict}
                   </span>
                 </div>
 
-                <h3 className="font-serif text-base font-semibold text-stone-900 group-hover:text-amber-900 transition-colors leading-snug">
+                <h3 className="font-serif text-base font-semibold text-stone-900 group-hover:text-stone-700 transition-colors leading-snug">
                   {scenario.title}
                 </h3>
 
@@ -180,7 +193,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
               </div>
 
               <div className="flex items-center justify-between pt-3 mt-3 border-t border-stone-100 text-xs">
-                <span className="text-stone-400 font-mono text-[11px]">Domain: {scenario.category}</span>
+                <span className="text-stone-500 font-mono text-[11px]">Domain: {scenario.category}</span>
                 <span className="inline-flex items-center gap-1 font-semibold text-stone-800 group-hover:translate-x-0.5 transition-transform">
                   Run Benchmark
                   <ArrowRight size={13} />
@@ -191,56 +204,56 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
         </div>
       </section>
 
-      {/* 4 Architectural Pillars */}
+      {/* Core Verification Principles */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-stone-900 text-stone-100 rounded-2xl p-6 sm:p-8 space-y-6">
+        <div className="bg-stone-900 text-stone-100 rounded-xl p-6 sm:p-8 space-y-6">
           <div className="max-w-2xl">
-            <h2 className="font-serif text-2xl font-bold tracking-tight text-stone-50">
-              Architectural Pillars for Misinformation Defense
+            <h2 className="font-serif text-xl font-bold tracking-tight text-stone-50">
+              Core Verification Principles
             </h2>
             <p className="text-xs text-stone-400 mt-1">
-              Built to withstand academic examination, peer review, and viva defense
+              Methodological standards governing claim decomposition, evidence grounding, and uncertainty reporting
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            <div className="bg-stone-800/80 border border-stone-700/60 rounded-xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold">
-                <BrainCircuit size={16} />
+            <div className="bg-stone-800/80 border border-stone-700/60 rounded-lg p-4 space-y-2">
+              <div className="w-7 h-7 rounded bg-stone-700 text-stone-200 flex items-center justify-center font-bold">
+                <BrainCircuit size={15} />
               </div>
-              <h3 className="font-semibold text-stone-100 text-sm">Evidence-Bounded AI</h3>
+              <h3 className="font-semibold text-stone-100 text-sm">Evidence-Bounded Reasoning</h3>
               <p className="text-stone-400 leading-relaxed">
-                Gemini 3.8 Flash is restricted to reasoning over retrieved citations, eliminating hallucinated "truth judgments".
+                Gemini reasoning is restricted strictly to retrieved evidence snippets, preventing ungrounded speculation.
               </p>
             </div>
 
-            <div className="bg-stone-800/80 border border-stone-700/60 rounded-xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold">
-                <Scale size={16} />
+            <div className="bg-stone-800/80 border border-stone-700/60 rounded-lg p-4 space-y-2">
+              <div className="w-7 h-7 rounded bg-stone-700 text-stone-200 flex items-center justify-center font-bold">
+                <Scale size={15} />
               </div>
-              <h3 className="font-semibold text-stone-100 text-sm">Absence of Evidence != False</h3>
+              <h3 className="font-semibold text-stone-100 text-sm">Absence of Evidence Standard</h3>
               <p className="text-stone-400 leading-relaxed">
-                Adheres strictly to the scientific method: unverified assertions are marked <em>INSUFFICIENT EVIDENCE</em>, never false.
+                Uncorroborated assertions are classified as <em>INSUFFICIENT EVIDENCE</em>, never assumed false without proof.
               </p>
             </div>
 
-            <div className="bg-stone-800/80 border border-stone-700/60 rounded-xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center font-bold">
-                <Database size={16} />
+            <div className="bg-stone-800/80 border border-stone-700/60 rounded-lg p-4 space-y-2">
+              <div className="w-7 h-7 rounded bg-stone-700 text-stone-200 flex items-center justify-center font-bold">
+                <Database size={15} />
               </div>
-              <h3 className="font-semibold text-stone-100 text-sm">5-Tier Source Prioritization</h3>
+              <h3 className="font-semibold text-stone-100 text-sm">Source Prioritization</h3>
               <p className="text-stone-400 leading-relaxed">
-                Prioritizes Government, Academic/Scientific (.edu, peer-reviewed), and Primary datasets over secondary blogs.
+                Institutional domains (.gov, .edu, scientific journals, verified registries) are prioritized over secondary content.
               </p>
             </div>
 
-            <div className="bg-stone-800/80 border border-stone-700/60 rounded-xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold">
-                <Layers size={16} />
+            <div className="bg-stone-800/80 border border-stone-700/60 rounded-lg p-4 space-y-2">
+              <div className="w-7 h-7 rounded bg-stone-700 text-stone-200 flex items-center justify-center font-bold">
+                <Layers size={15} />
               </div>
               <h3 className="font-semibold text-stone-100 text-sm">Conflict Detection</h3>
               <p className="text-stone-400 leading-relaxed">
-                When credible authorities disagree, TruthLens flags <em>CONFLICTING EVIDENCE</em> rather than forcing a binary consensus.
+                When credible sources disagree, the engine flags <em>CONFLICTING EVIDENCE</em> rather than forcing a false consensus.
               </p>
             </div>
           </div>

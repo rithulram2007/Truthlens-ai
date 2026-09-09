@@ -82,11 +82,11 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
           {/* AI Grounded Reasoning Explanation */}
           <div className="bg-white border border-stone-200 rounded-lg p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-semibold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
+              <span className="text-xs font-mono font-semibold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
                 <BookOpen size={14} className="text-stone-600" />
-                Gemini 3.8 Grounded Reasoning & Explanation
+                Evidence-Grounded Reasoning
               </span>
-              <span className="text-[11px] font-mono text-stone-400">Traceable Epistemic Audit</span>
+              <span className="text-[11px] font-mono text-stone-400">Grounded in retrieved evidence</span>
             </div>
             <p className="text-sm text-stone-800 leading-relaxed font-sans">{claim.reasoning}</p>
             {claim.evidenceSummary && (
@@ -97,7 +97,7 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
             )}
           </div>
 
-          {/* Sub-Tabs: Evidence Items / Traceable Sources / Conflicts & Uncertainty */}
+          {/* Sub-Tabs: Evidence Items / Sources / Conflict Detection */}
           <div className="space-y-3">
             <div className="flex border-b border-stone-200 gap-4 text-xs font-medium">
               <button
@@ -109,7 +109,7 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                Evidentiary Findings ({claim.supportingEvidence.length + claim.contradictingEvidence.length})
+                Evidence ({claim.supportingEvidence.length + claim.contradictingEvidence.length})
               </button>
               <button
                 type="button"
@@ -120,7 +120,7 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                Traceable Sources ({claim.sources.length})
+                Sources ({claim.sources.length})
               </button>
               <button
                 type="button"
@@ -131,7 +131,7 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                Conflicts & Uncertainty ({claim.conflicts.length > 0 ? '1+' : '0'})
+                Conflict Detection ({claim.conflicts.length > 0 ? 'Flagged' : 'None'})
               </button>
             </div>
 
