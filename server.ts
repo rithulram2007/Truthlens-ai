@@ -9,90 +9,90 @@ import { isTavilyQuotaOrServiceError } from './server/tavily';
 
 const PORT = 3000;
 
-async function startServer() {
-  const app = express();
+export const app = express();
 
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  // Health check endpoint
-  app.get('/api/health', (_req, res) => {
-    res.json({
-      status: 'ok',
-      service: 'TruthLens Verification Engine',
-      timestamp: new Date().toISOString(),
-      hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
-      hasTavilyKey: Boolean(process.env.TAVILY_API_KEY),
-    });
+// Health check endpoint (supports /api/health, /health, and /api for Vercel functions and local dev)
+app.get(['/api/health', '/health', '/api'], (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'TruthLens Verification Engine',
+    timestamp: new Date().toISOString(),
+    hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+    hasTavilyKey: Boolean(process.env.TAVILY_API_KEY),
   });
+});
 
-  // Preview article / claim extraction
-  app.post('/api/extract-input', async (req, res) => {
-    try {
-      const { input } = req.body;
-      if (!input || typeof input !== 'string') {
-        res.status(400).json({ error: 'Input text or URL is required.' });
-        return;
-      }
-      const extracted = await extractArticle(input);
-      res.json(extracted);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('Error in /api/extract-input:', msg);
-      res.status(500).json({ error: 'Failed to extract input data.', details: msg });
+// Preview article / claim extraction
+app.post(['/api/extract-input', '/extract-input'], async (req, res) => {
+  try {
+    const { input } = req.body;
+    if (!input || typeof input !== 'string') {
+      res.status(400).json({ error: 'Input text or URL is required.' });
+      return;
     }
-  });
+    const extracted = await extractArticle(input);
+    res.json(extracted);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Error in /api/extract-input:', msg);
+    res.status(500).json({ error: 'Failed to extract input data.', details: msg });
+  }
+});
 
-  // Main verification pipeline endpoint
-  app.post('/api/verify', async (req, res) => {
-    try {
-      const { input } = req.body;
-      if (!input || typeof input !== 'string' || !input.trim()) {
-        res.status(400).json({ error: 'Please provide a factual claim, URL, or article text.' });
-        return;
-      }
+// Main verification pipeline endpoint
+app.post(['/api/verify', '/verify'], async (req, res) => {
+  try {
+    const { input } = req.body;
+    if (!input || typeof input !== 'string' || !input.trim()) {
+      res.status(400).json({ error: 'Please provide a factual claim, URL, or article text.' });
+      return;
+    }
 
-      console.log(`[TruthLens] Initiating verification pipeline for input length: ${input.length}`);
+    console.log(`[TruthLens] Initiating verification pipeline for input length: ${input.length}`);
 
-      // 1. Article / Input Extraction
-      const articleData = await extractArticle(input);
+    // 1. Article / Input Extraction
+    const articleData = await extractArticle(input);
 
-      // 2. Claim Decomposition & Classification
-      const rawClaims = await extractClaimsFromText(articleData.text, articleData.inputType);
-      console.log(`[TruthLens] Extracted ${rawClaims.length} claims.`);
+    // 2. Claim Decomposition & Classification
+    const rawClaims = await extractClaimsFromText(articleData.text, articleData.inputType);
+    console.log(`[TruthLens] Extracted ${rawClaims.length} claims.`);
 
-      // 3. Evidence Retrieval, Assessment, Ranking, Comparison & Gemini Reasoning
-      const result = await verifyClaimsPipeline(articleData, rawClaims);
-      console.log(`[TruthLens] Verification completed. Overall verdict: ${result.overallVerdict}, confidence: ${result.overallConfidence}%`);
+    // 3. Evidence Retrieval, Assessment, Ranking, Comparison & Gemini Reasoning
+    const result = await verifyClaimsPipeline(articleData, rawClaims);
+    console.log(`[TruthLens] Verification completed. Overall verdict: ${result.overallVerdict}, confidence: ${result.overallConfidence}%`);
 
-      res.json(result);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[TruthLens] Error in verification pipeline:', msg);
+    res.json(result);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[TruthLens] Error in verification pipeline:', msg);
 
-      if (isGeminiQuotaOrServiceError(err) || isTavilyQuotaOrServiceError(err) || (err as Record<string, unknown>)?.isQuotaError) {
-        const errorObj = err as Record<string, unknown>;
-        const service = (errorObj?.service as string) || (msg.toLowerCase().includes('tavily') ? 'Tavily' : 'Gemini');
-        res.status(429).json({
-          error: 'Verification Service Unavailable',
-          code: 'RESOURCE_EXHAUSTED',
-          isQuotaError: true,
-          service,
-          message: msg.startsWith('Verification Service Unavailable')
-            ? msg
-            : `Verification Service Unavailable: ${service} quota is currently exhausted or unavailable.`,
-          details: (errorObj?.details as string) || msg,
-        });
-        return;
-      }
-
-      res.status(500).json({
-        error: 'Verification processing encountered an error.',
-        details: msg,
+    if (isGeminiQuotaOrServiceError(err) || isTavilyQuotaOrServiceError(err) || (err as Record<string, unknown>)?.isQuotaError) {
+      const errorObj = err as Record<string, unknown>;
+      const service = (errorObj?.service as string) || (msg.toLowerCase().includes('tavily') ? 'Tavily' : 'Gemini');
+      res.status(429).json({
+        error: 'Verification Service Unavailable',
+        code: 'RESOURCE_EXHAUSTED',
+        isQuotaError: true,
+        service,
+        message: msg.startsWith('Verification Service Unavailable')
+          ? msg
+          : `Verification Service Unavailable: ${service} quota is currently exhausted or unavailable.`,
+        details: (errorObj?.details as string) || msg,
       });
+      return;
     }
-  });
 
+    res.status(500).json({
+      error: 'Verification processing encountered an error.',
+      details: msg,
+    });
+  }
+});
+
+export async function startServer() {
   // Vite development middleware or static production serving
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -113,7 +113,12 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+// Only start the standalone HTTP listener when not running in a Vercel serverless environment
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}
+
+export default app;
