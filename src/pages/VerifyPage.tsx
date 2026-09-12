@@ -89,13 +89,15 @@ export const VerifyPage: React.FC<VerifyPageProps> = ({
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}));
         const isQuota =
+          response.status === 402 ||
           response.status === 429 ||
           response.status === 503 ||
           errJson.code === 'RESOURCE_EXHAUSTED' ||
+          errJson.code === 'PAYMENT_REQUIRED' ||
           errJson.isQuotaError ||
           errJson.error === 'Verification Service Unavailable' ||
-          (typeof errJson.message === 'string' && errJson.message.includes('RESOURCE_EXHAUSTED')) ||
-          (typeof errJson.details === 'string' && errJson.details.includes('RESOURCE_EXHAUSTED'));
+          (typeof errJson.message === 'string' && (errJson.message.includes('RESOURCE_EXHAUSTED') || errJson.message.includes('402') || errJson.message.includes('credits'))) ||
+          (typeof errJson.details === 'string' && (errJson.details.includes('RESOURCE_EXHAUSTED') || errJson.details.includes('402') || errJson.details.includes('credits')));
 
         if (isQuota) {
           const quotaErr = new Error('Verification Service Unavailable');
@@ -104,7 +106,7 @@ export const VerifyPage: React.FC<VerifyPageProps> = ({
             details:
               errJson.message ||
               errJson.details ||
-              'The Gemini API quota is currently exhausted (HTTP 429 RESOURCE_EXHAUSTED). The verification engine cannot query external sources or run evidence reasoning until the quota resets or a billing-enabled API key is configured.',
+              'The verification reasoning service is currently unavailable or requires quota/credits. Per academic and epistemic safeguards, this infrastructure limitation is strictly distinct from "INSUFFICIENT EVIDENCE"—the verification pipeline did not execute, so no epistemic claim verdict has been assigned.',
           });
           throw quotaErr;
         }
@@ -127,13 +129,16 @@ export const VerifyPage: React.FC<VerifyPageProps> = ({
         Boolean((err as Record<string, unknown>)?.isQuota) ||
         String(err).includes('Verification Service Unavailable') ||
         String(err).includes('RESOURCE_EXHAUSTED') ||
+        String(err).includes('PAYMENT_REQUIRED') ||
+        String(err).includes('credits') ||
+        String(err).includes('402') ||
         String(err).includes('quota');
 
       if (isQuota) {
         setErrorMsg('Verification Service Unavailable');
         setErrorDetails(
           ((err as Record<string, unknown>)?.details as string) ||
-            'The Gemini API quota is currently exhausted (HTTP 429 RESOURCE_EXHAUSTED). The verification engine cannot run at this time. Per academic and epistemic safeguards, this infrastructure limitation is strictly distinct from "INSUFFICIENT EVIDENCE"—the verification pipeline did not execute, so no epistemic claim verdict has been assigned.'
+            'The verification reasoning service is currently unavailable or requires quota/credits. The verification engine cannot run at this time. Per academic and epistemic safeguards, this infrastructure limitation is strictly distinct from "INSUFFICIENT EVIDENCE"—the verification pipeline did not execute, so no epistemic claim verdict has been assigned.'
         );
         setIsQuotaError(true);
       } else {

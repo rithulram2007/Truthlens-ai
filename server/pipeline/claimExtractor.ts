@@ -1,5 +1,4 @@
-import { Type } from '@google/genai';
-import { getGeminiClient, isGeminiQuotaOrServiceError, createServiceUnavailableError } from '../gemini';
+import { callLLMReasoning, isGeminiQuotaOrServiceError, createServiceUnavailableError } from '../gemini';
 import { ClaimCategory, ClaimStatementType } from '../../src/types';
 
 export interface ExtractedClaimRaw {
@@ -127,9 +126,7 @@ export async function extractClaimsFromText(
     ];
   }
 
-  // For multi-paragraph articles or URLs, call Gemini with a tight token budget to extract the top 1-2 central claims
-  const ai = getGeminiClient();
-
+  // For multi-paragraph articles or URLs, call reasoning model with a tight token budget to extract the top 1-2 central claims
   const prompt = `You are TruthLens's Claim Extraction Engine.
 Analyze the following text and extract the top 1 to 2 key central empirical claims.
 Do not extract trivial statements.
@@ -141,64 +138,50 @@ ${trimmed.substring(0, 3000)}
 
 Classify category into: "Politics", "Science", "Health", "Technology", "Economics", "Environment", "Crime", "History", "Statistics", or "General".
 statementType MUST be one of: "factual", "opinion", "prediction", "subjective".
-isVerifiable: true if testable against empirical evidence.`;
+isVerifiable: true if testable against empirical evidence.
+
+Return a JSON array of objects with the following structure:
+[
+  {
+    "claimText": "string",
+    "category": "Politics" | "Science" | "Health" | "Technology" | "Economics" | "Environment" | "Crime" | "History" | "Statistics" | "General",
+    "statementType": "factual" | "opinion" | "prediction" | "subjective",
+    "isVerifiable": boolean,
+    "contextSnippet": "string"
+  }
+]
+Return ONLY the JSON array.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              claimText: { type: Type.STRING },
-              category: {
-                type: Type.STRING,
-                enum: [
-                  'Politics',
-                  'Science',
-                  'Health',
-                  'Technology',
-                  'Economics',
-                  'Environment',
-                  'Crime',
-                  'History',
-                  'Statistics',
-                  'General',
-                ],
-              },
-              statementType: {
-                type: Type.STRING,
-                enum: ['factual', 'opinion', 'prediction', 'subjective'],
-              },
-              isVerifiable: { type: Type.BOOLEAN },
-              contextSnippet: { type: Type.STRING },
-            },
-            required: ['claimText', 'category', 'statementType', 'isVerifiable'],
-          },
-        },
-      },
-    });
+    const rawResponseText = await callLLMReasoning(prompt, { json: true, max_tokens: 1000 });
+    const jsonMatch = rawResponseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, rawResponseText];
+    let parsed: Array<Record<string, unknown>> = [];
+    try {
+      parsed = JSON.parse(jsonMatch[1]?.trim() || rawResponseText.trim());
+    } catch {
+      const firstBracket = rawResponseText.indexOf('[');
+      const lastBracket = rawResponseText.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1) {
+        parsed = JSON.parse(rawResponseText.substring(firstBracket, lastBracket + 1));
+      }
+    }
 
-    const parsed = JSON.parse(response.text || '[]');
     if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed.slice(0, 2).map((item) => ({
-        claimText: item.claimText || trimmed,
+        claimText: (item.claimText as string) || trimmed,
         category: (item.category as ClaimCategory) || 'General',
         statementType: (item.statementType as ClaimStatementType) || 'factual',
         isVerifiable: typeof item.isVerifiable === 'boolean' ? item.isVerifiable : true,
-        contextSnippet: item.contextSnippet || '',
+        contextSnippet: (item.contextSnippet as string) || '',
       }));
     }
   } catch (error) {
     console.error('Error in claim extraction:', error);
-    // If Gemini quota is exhausted, immediately throw service unavailable error to stop wasting quota
+    // If quota or service unavailable, throw service unavailable error
     if (isGeminiQuotaOrServiceError(error)) {
       throw createServiceUnavailableError(
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
+        process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'Gemini'
       );
     }
   }

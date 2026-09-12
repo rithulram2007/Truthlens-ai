@@ -1,4 +1,4 @@
-import { getGeminiClient, isGeminiQuotaOrServiceError, createServiceUnavailableError } from '../gemini';
+import { callLLMReasoning, isGeminiQuotaOrServiceError, createServiceUnavailableError } from '../gemini';
 import { searchTavily, isTavilyQuotaOrServiceError } from '../tavily';
 import {
   ClaimVerification,
@@ -28,43 +28,6 @@ interface GeminiClaimReasoningOutput {
     sourceIndex: number;
     relationship: SourceRelationship;
   }>;
-}
-
-// Robust retry wrapper for Gemini 3.8 Flash to handle transient 503 unavailable spikes
-async function callGeminiWithRetry(prompt: string, maxAttempts = 3): Promise<string> {
-  const ai = getGeminiClient();
-  let lastError: unknown;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-      });
-      return response.text || '';
-    } catch (err: unknown) {
-      lastError = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[TruthLens] Gemini attempt ${attempt}/${maxAttempts} failed: ${msg}`);
-
-      if (isGeminiQuotaOrServiceError(err)) {
-        // If 429 quota exhausted or non-retryable quota error, don't waste time retrying
-        if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED')) {
-          throw createServiceUnavailableError(msg);
-        }
-      }
-
-      if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
-      }
-    }
-  }
-
-  if (isGeminiQuotaOrServiceError(lastError)) {
-    throw createServiceUnavailableError(lastError instanceof Error ? lastError.message : String(lastError));
-  }
-
-  throw new Error(`Gemini reasoning service failed after ${maxAttempts} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
 }
 
 export async function verifyClaimsPipeline(
@@ -261,16 +224,16 @@ Return ONLY valid JSON matching this schema:
 
     let reasoningOutputText = '';
     try {
-      reasoningOutputText = await callGeminiWithRetry(reasoningPrompt);
-    } catch (geminiErr: unknown) {
-      console.error('[TruthLens] Gemini reasoning error:', geminiErr);
-      if (isGeminiQuotaOrServiceError(geminiErr)) {
+      reasoningOutputText = await callLLMReasoning(reasoningPrompt, { json: true, max_tokens: 2500 });
+    } catch (llmErr: unknown) {
+      console.error('[TruthLens] LLM reasoning error:', llmErr);
+      if (isGeminiQuotaOrServiceError(llmErr)) {
         throw createServiceUnavailableError(
-          geminiErr instanceof Error ? geminiErr.message : String(geminiErr),
-          'Gemini'
+          llmErr instanceof Error ? llmErr.message : String(llmErr),
+          process.env.OPENROUTER_API_KEY ? 'OpenRouter' : 'Gemini'
         );
       }
-      throw geminiErr;
+      throw llmErr;
     }
 
     // Parse JSON
