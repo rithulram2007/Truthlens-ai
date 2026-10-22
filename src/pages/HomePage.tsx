@@ -64,7 +64,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
     <div className="space-y-12 pb-16">
       {/* Product Overview Section */}
       <section className="bg-white border-b border-stone-200 py-10 sm:py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+        <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           <div className="space-y-2">
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight">
               TruthLens
@@ -72,7 +72,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
             <p className="text-lg font-medium text-stone-700">
               AI-Assisted Claim Verification
             </p>
-            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-sans max-w-2xl">
+            <p className="text-sm sm:text-base text-stone-600 leading-relaxed font-sans max-w-3xl">
               Analyze claims and articles using retrieved evidence and transparent verification.
               TruthLens extracts factual assertions, retrieves live authoritative sources, evaluates domain
               credibility, and provides evidence-grounded verdicts.
@@ -81,7 +81,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
 
           {/* Quick verification form */}
           <form onSubmit={handleQuickSubmit} className="space-y-3 pt-2">
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 max-w-5xl">
               <div className="relative flex-1">
                 <Search size={16} className="absolute left-3.5 top-3.5 text-stone-400" />
                 <input
@@ -101,7 +101,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-stone-500 max-w-5xl">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-emerald-700" />
                 <span>Sources retrieved live from verified web databases and registries</span>
@@ -119,7 +119,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
       </section>
 
       {/* Verification Pipeline Workflow */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+      <section className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
@@ -143,7 +143,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
       </section>
 
       {/* Benchmark Test Scenarios */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+      <section className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
         <div>
           <h2 className="font-serif text-xl font-bold text-stone-900 tracking-tight">
             Benchmark Test Scenarios
@@ -205,7 +205,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate, onSelectSample }
       </section>
 
       {/* Core Verification Principles */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-stone-900 text-stone-100 rounded-xl p-6 sm:p-8 space-y-6">
           <div className="max-w-2xl">
             <h2 className="font-serif text-xl font-bold tracking-tight text-stone-50">

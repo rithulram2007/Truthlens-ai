@@ -166,7 +166,7 @@ export default function App() {
 
       {/* Academic Footer */}
       <footer className="bg-stone-900 text-stone-300 border-t border-stone-800 text-xs mt-16 print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+        <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3 md:col-span-2">
               <div className="flex items-center gap-2.5">

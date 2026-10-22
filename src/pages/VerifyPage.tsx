@@ -169,7 +169,7 @@ Recent phase-3 international clinical trials involving over 1,800 participants d
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Page Heading */}
       <div className="space-y-1">
         <h1 className="font-serif text-3xl font-bold text-stone-900 tracking-tight">

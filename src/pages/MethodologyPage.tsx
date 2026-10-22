@@ -14,7 +14,7 @@ import {
 
 export const MethodologyPage: React.FC = () => {
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+    <div className="max-w-7xl xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
       {/* Header */}
       <div className="space-y-2 border-b border-stone-200 pb-6">
         <div className="flex items-center gap-2 text-xs font-mono text-stone-500 uppercase tracking-wider">

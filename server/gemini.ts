@@ -206,29 +206,117 @@ export async function callOpenRouter(
 }
 
 /**
- * Unified reasoning transport: Uses OpenRouter if OPENROUTER_API_KEY is present;
- * otherwise falls back to direct Gemini SDK if GEMINI_API_KEY is configured.
+ * Executes reasoning using direct Google GenAI SDK with multi-model fallback:
+ * gemini-3.5-flash -> gemini-3.5-flash-lite -> gemini-3.8-flash
+ */
+export async function callGeminiDirect(
+  prompt: string,
+  options?: { json?: boolean; max_tokens?: number }
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw createServiceUnavailableError(
+      'GEMINI_API_KEY is not configured on the server.',
+      'Gemini'
+    );
+  }
+
+  const ai = getGeminiClient();
+  const modelsToTry = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
+  let lastError: unknown = null;
+
+  for (const model of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: {
+          temperature: 0.1,
+          maxOutputTokens: options?.max_tokens || 2048,
+          responseMimeType: options?.json ? 'application/json' : undefined,
+        },
+      });
+
+      const text = response.text || '';
+      if (text && text.trim().length > 0) {
+        return text;
+      }
+    } catch (err: unknown) {
+      console.warn(
+        `[TruthLens] Gemini model ${model} attempt failed: ${err instanceof Error ? err.message : String(err)}. Trying alternative model...`
+      );
+      lastError = err;
+    }
+  }
+
+  throw (
+    lastError ||
+    createServiceUnavailableError(
+      'All Gemini reasoning models encountered temporary unavailability.',
+      'Gemini'
+    )
+  );
+}
+
+let openRouterAuthDisabled = false;
+
+/**
+ * Unified reasoning transport:
+ * 1. If GEMINI_API_KEY is present, we leverage native Google GenAI with automatic model fallback.
+ * 2. If OPENROUTER_API_KEY is provided and not disabled by 401 Unauthorized, we attempt OpenRouter first,
+ *    but if it fails (401 auth error, 402 payment required, 429 quota, or 503 unavailable),
+ *    we seamlessly fall back to Gemini without crashing the user's verification pipeline.
+ * 3. Only if both services fail or no keys are configured is a service-unavailable error thrown.
  */
 export async function callLLMReasoning(
   prompt: string,
   options?: { json?: boolean; max_tokens?: number }
 ): Promise<string> {
-  if (process.env.OPENROUTER_API_KEY) {
-    return await callOpenRouter(prompt, options);
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY);
+  const hasOpenRouter = Boolean(process.env.OPENROUTER_API_KEY) && !openRouterAuthDisabled;
+
+  // Primary path: If native Gemini is available, use it directly for fast, high-reliability reasoning
+  if (hasGemini) {
+    try {
+      return await callGeminiDirect(prompt, options);
+    } catch (geminiErr: unknown) {
+      console.warn(
+        '[TruthLens] Native Gemini direct reasoning encountered error:',
+        geminiErr instanceof Error ? geminiErr.message : String(geminiErr)
+      );
+
+      // If Gemini fails and OpenRouter is configured, try OpenRouter as secondary backup
+      if (hasOpenRouter) {
+        console.log('[TruthLens] Attempting secondary fallback via OpenRouter...');
+        try {
+          return await callOpenRouter(prompt, options);
+        } catch (orErr: unknown) {
+          console.error('[TruthLens] Secondary OpenRouter fallback also failed:', orErr);
+          if (orErr instanceof Error && (orErr.message.includes('401') || orErr.message.includes('AUTHENTICATION_FAILED'))) {
+            openRouterAuthDisabled = true;
+          }
+        }
+      }
+
+      throw geminiErr;
+    }
   }
 
-  if (process.env.GEMINI_API_KEY) {
-    const ai = getGeminiClient();
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-    });
-    return response.text || '';
+  // If only OpenRouter is available:
+  if (hasOpenRouter) {
+    try {
+      return await callOpenRouter(prompt, options);
+    } catch (orErr: unknown) {
+      if (orErr instanceof Error && (orErr.message.includes('401') || orErr.message.includes('AUTHENTICATION_FAILED'))) {
+        openRouterAuthDisabled = true;
+      }
+      throw orErr;
+    }
   }
 
   throw createServiceUnavailableError(
-    'Neither OPENROUTER_API_KEY nor GEMINI_API_KEY is configured. Please provide OPENROUTER_API_KEY in your environment.',
-    'OpenRouter'
+    'Neither GEMINI_API_KEY nor OPENROUTER_API_KEY is configured on the server.',
+    'Gemini'
   );
 }
 

@@ -10,6 +10,8 @@ import {
   BrainCircuit,
   Award,
   Link2,
+  Check,
+  ArrowRight,
 } from 'lucide-react';
 
 export interface PipelineStep {
@@ -81,24 +83,24 @@ export const PIPELINE_STEPS: PipelineStep[] = [
   {
     number: 8,
     id: 'reasoning',
-    name: 'Evidence-Grounded Reasoning',
-    shortDesc: 'Applies Gemini model reasoning strictly over the retrieved evidence citations.',
+    name: 'LLM Reasoning',
+    shortDesc: 'Applies LLM reasoning strictly grounded on the retrieved evidence citations.',
     icon: <BrainCircuit size={16} />,
     category: 'Reasoning',
   },
   {
     number: 9,
-    id: 'verdict',
-    name: 'Verification Result',
-    shortDesc: 'Determines the verdict (SUPPORTED, CONTRADICTED, or INSUFFICIENT EVIDENCE) and confidence.',
+    id: 'confidence',
+    name: 'Confidence Estimation',
+    shortDesc: 'Calculates evidentiary certainty, consistency metrics, and confidence score.',
     icon: <Award size={16} />,
     category: 'Output',
   },
   {
     number: 10,
-    id: 'sources',
-    name: 'Sources',
-    shortDesc: 'Compiles verified source links, citations, and exportable verification records.',
+    id: 'verdict',
+    name: 'Generate Verdict',
+    shortDesc: 'Determines the final verdict (SUPPORTED, CONTRADICTED, or INSUFFICIENT EVIDENCE) and citations.',
     icon: <Link2 size={16} />,
     category: 'Output',
   },
@@ -139,57 +141,76 @@ export const PipelineVisualizer: React.FC<PipelineVisualizerProps> = ({
         </span>
       </div>
 
-      {/* Pipeline steps scroll track */}
-      <div className="overflow-x-auto py-4 scrollbar-thin">
-        <div className="flex items-center min-w-[780px] gap-2">
-          {PIPELINE_STEPS.map((step, idx) => {
-            const isCurrent = activeStep === step.number;
-            const isPassed = activeStep ? activeStep > step.number : false;
-            const isSelected = selectedStep.number === step.number;
+      {/* 10-Stage Pipeline: Clean 5x2 grid on desktop with zero horizontal scroll */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 py-4">
+        {PIPELINE_STEPS.map((step, idx) => {
+          const isCurrent = activeStep === step.number;
+          const isPassed = activeStep ? activeStep > step.number : false;
+          const isSelected = selectedStep.number === step.number;
 
-            let badgeStyles = 'bg-stone-50 border-stone-200 text-stone-700 hover:border-stone-400';
-            if (isCurrent) {
-              badgeStyles = 'bg-stone-900 border-stone-900 text-white shadow-xs';
-            } else if (isPassed) {
-              badgeStyles = 'bg-emerald-50/70 border-emerald-300 text-emerald-900';
-            } else if (isSelected) {
-              badgeStyles = 'bg-stone-100 border-stone-400 text-stone-950 font-semibold';
-            }
+          let badgeStyles = 'bg-stone-50/80 border-stone-200 text-stone-700 hover:border-stone-400 hover:bg-stone-100/70';
+          if (isCurrent) {
+            badgeStyles = 'bg-stone-900 border-stone-900 text-white shadow-xs ring-2 ring-stone-900 ring-offset-1';
+          } else if (isPassed) {
+            badgeStyles = 'bg-emerald-50/80 border-emerald-300 text-emerald-950';
+          } else if (isSelected) {
+            badgeStyles = 'bg-stone-100 border-stone-400 text-stone-950 font-semibold shadow-xs';
+          }
 
-            return (
-              <React.Fragment key={step.id}>
-                <button
-                  type="button"
-                  onClick={() => interactive && setSelectedStep(step)}
-                  className={`flex flex-col items-center text-left p-2.5 rounded-lg border transition-all text-xs w-[140px] shrink-0 cursor-pointer ${badgeStyles}`}
-                >
-                  <div className="flex items-center justify-between w-full mb-1.5">
-                    <span className="font-mono text-[10px] font-bold opacity-75">
-                      0{step.number}
-                    </span>
-                    <span className="opacity-90">{step.icon}</span>
-                  </div>
-                  <span className="font-semibold leading-tight line-clamp-1 text-xs">
-                    {step.name}
+          const stepNumberFormatted = step.number < 10 ? `0${step.number}` : `${step.number}`;
+          // Show directional flow arrow on desktop between columns in row 1 (01-04) and row 2 (06-09)
+          const showRowConnector = idx !== 4 && idx !== 9;
+
+          return (
+            <button
+              key={step.id}
+              type="button"
+              onClick={() => interactive && setSelectedStep(step)}
+              className={`flex flex-col text-left p-3 rounded-lg border transition-all text-xs w-full relative ${
+                interactive ? 'cursor-pointer' : 'cursor-default'
+              } ${badgeStyles}`}
+            >
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-[11px] font-bold opacity-80">
+                    {stepNumberFormatted}
                   </span>
-                  <span className="text-[10px] opacity-70 mt-0.5 line-clamp-1">
-                    {step.category}
-                  </span>
-                </button>
-                {idx < PIPELINE_STEPS.length - 1 && (
-                  <div className="w-3 h-0.5 bg-stone-200 shrink-0" />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
+                  {isCurrent && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"
+                      title="Current Stage"
+                    />
+                  )}
+                  {isPassed && (
+                    <Check size={12} className="text-emerald-700 inline-block stroke-[2.5]" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="opacity-90">{step.icon}</span>
+                  {showRowConnector && (
+                    <ArrowRight
+                      size={11}
+                      className="hidden md:inline-block text-stone-400/80 ml-0.5"
+                    />
+                  )}
+                </div>
+              </div>
+              <span className="font-semibold leading-snug text-xs truncate">
+                {step.name}
+              </span>
+              <span className="text-[10px] opacity-70 mt-0.5 truncate">
+                {step.category}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Selected / Current step detail banner */}
       <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="w-5 h-5 rounded bg-stone-900 text-white font-mono text-[11px] flex items-center justify-center font-bold">
-            {selectedStep.number}
+            {selectedStep.number < 10 ? `0${selectedStep.number}` : selectedStep.number}
           </span>
           <div>
             <span className="font-semibold text-stone-900">{selectedStep.name}: </span>
