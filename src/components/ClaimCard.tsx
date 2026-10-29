@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { ClaimVerification } from '../types';
 import { VerdictBadge } from './VerdictBadge';
 import { ConfidenceMeter } from './ConfidenceMeter';
+import { VerificationCoverageSection } from './VerificationCoverageSection';
+import { EvidenceIndependenceSection } from './EvidenceIndependenceSection';
+import { EvidenceOriginMap } from './EvidenceOriginMap';
 import {
   ChevronDown,
   ChevronUp,
@@ -97,7 +100,20 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
             )}
           </div>
 
-          {/* Sub-Tabs: Evidence Items / Sources / Conflict Detection */}
+          {/* 3. Verification Coverage */}
+          <VerificationCoverageSection coverage={claim.verificationCoverage} />
+
+          {/* 4. Evidence Independence (IEC) */}
+          <EvidenceIndependenceSection iec={claim.evidenceIndependence} />
+
+          {/* 5. Evidence Origin Map */}
+          <EvidenceOriginMap
+            claimText={claim.claimText}
+            iec={claim.evidenceIndependence}
+            sources={claim.sources}
+          />
+
+          {/* 6. Existing Sub-Tabs: Evidence Items / Sources / Conflict Detection */}
           <div className="space-y-3">
             <div className="flex border-b border-stone-200 gap-4 text-xs font-medium">
               <button
@@ -208,6 +224,11 @@ export const ClaimCard: React.FC<ClaimCardProps> = ({
                             {src.assessment} Reliability
                           </span>
                           <span className="text-stone-500 font-mono text-[11px]">{src.tier}</span>
+                          {src.evidenceOrigin && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-stone-100 text-stone-700 border border-stone-200">
+                              Origin: {src.evidenceOrigin}
+                            </span>
+                          )}
                           {src.publicationDate && (
                             <span className="text-stone-400 text-[11px]">
                               Published: {src.publicationDate}

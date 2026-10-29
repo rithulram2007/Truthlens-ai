@@ -202,10 +202,72 @@ export const VerificationReportModal: React.FC<VerificationReportModalProps> = (
                     </div>
                   )}
 
+                  {/* Factual Components & Verification Coverage */}
+                  {claim.verificationCoverage && (
+                    <div className="bg-stone-50 p-2.5 rounded border border-stone-200 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-mono">
+                        <span className="font-bold text-stone-800">
+                          Verification Coverage: {claim.verificationCoverage.coverageScore !== null ? `${claim.verificationCoverage.coverageScore}%` : 'UNKNOWN'} ({claim.verificationCoverage.statusLabel})
+                        </span>
+                        <span className="text-stone-500">
+                          {claim.verificationCoverage.supportedCount}/{claim.verificationCoverage.componentsCount} supported
+                        </span>
+                      </div>
+                      <div className="space-y-1 pl-2 border-l-2 border-stone-300">
+                        {claim.verificationCoverage.components.map((comp, cIdx) => (
+                          <div key={comp.id || cIdx} className="text-[11px] flex items-center justify-between gap-2">
+                            <span className="text-stone-800">
+                              {cIdx + 1}. {comp.componentText}
+                            </span>
+                            <span className="font-mono text-[10px] font-semibold text-stone-600">
+                              [{comp.status} · +{comp.supportingEvidenceCount}/-{comp.contradictingEvidenceCount}]
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Independent Evidence Corroboration (IEC) */}
+                  {claim.evidenceIndependence && (
+                    <div className="bg-stone-50 p-2.5 rounded border border-stone-200 space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] font-mono">
+                        <span className="font-bold text-stone-800">
+                          Evidence Independence (IEC): {claim.evidenceIndependence.score !== null ? `${claim.evidenceIndependence.score}%` : 'UNKNOWN'} · {claim.evidenceIndependence.corroborationLevel}
+                        </span>
+                        <span className="text-[10px] text-stone-500">
+                          TruthLens project-specific metric
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono text-stone-700 pt-1">
+                        <div>Retrieved Sources: <strong>{claim.evidenceIndependence.sourcesRetrieved}</strong></div>
+                        <div>Independent Origins: <strong className="text-emerald-800">{claim.evidenceIndependence.independentOriginsCount}</strong></div>
+                        <div>Potentially Derivative: <strong>{claim.evidenceIndependence.derivativeSourcesCount}</strong></div>
+                        <div>
+                          Confidence: Base {claim.evidenceIndependence.baseConfidence}% → Adj. <strong className="text-emerald-800">{claim.evidenceIndependence.adjustedConfidence}%</strong>
+                        </div>
+                      </div>
+
+                      {/* Evidence Origin Map Summary */}
+                      {claim.evidenceIndependence.groups && claim.evidenceIndependence.groups.length > 0 && (
+                        <div className="pt-1.5 border-t border-stone-200/60 space-y-1">
+                          <div className="text-[10px] font-mono uppercase font-bold text-stone-600">
+                            Evidence Origin Map:
+                          </div>
+                          {claim.evidenceIndependence.groups.map((grp, gIdx) => (
+                            <div key={grp.id || gIdx} className="text-[11px] pl-2 font-mono text-stone-700">
+                              • <strong>{grp.originName}</strong>: {grp.sources.map((s) => `${s.sourceName} [${s.evidenceOrigin || 'Unknown'}]`).join(', ')}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {claim.sources.length > 0 && (
                     <div className="pt-2 border-t border-stone-100 text-[11px] text-stone-500">
                       <span className="font-semibold text-stone-700">Cited References: </span>
-                      {claim.sources.map((s) => `${s.sourceName} (${s.tier})`).join(', ')}
+                      {claim.sources.map((s) => `${s.sourceName} (${s.tier}${s.evidenceOrigin ? ` · ${s.evidenceOrigin}` : ''})`).join(', ')}
                     </div>
                   )}
                 </div>
@@ -226,7 +288,7 @@ export const VerificationReportModal: React.FC<VerificationReportModalProps> = (
                       [{sIdx + 1}] {s.title}
                     </div>
                     <div className="text-stone-500 text-[11px]">
-                      {s.sourceName} • {s.tier} • Assessment: {s.assessment} • Relevance: {s.relevance}%
+                      {s.sourceName} • {s.tier} • Assessment: {s.assessment} • Relevance: {s.relevance}%{s.evidenceOrigin ? ` • Origin: ${s.evidenceOrigin}` : ''}
                     </div>
                   </div>
                   {s.url && (

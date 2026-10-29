@@ -14,6 +14,10 @@ import { ExtractedClaimRaw } from './claimExtractor';
 import { assessDomainTier, rankAndDeduplicateSources } from './sourceAssessor';
 import { detectRiskIndicatorsInText } from './riskIndicatorDetector';
 import { ExtractedArticleData } from './articleExtractor';
+import {
+  computeVerificationCoverage,
+  analyzeIndependentEvidenceCorroboration,
+} from './evidenceIndependence';
 
 interface GeminiClaimReasoningOutput {
   verdict: VerdictType;
@@ -27,6 +31,20 @@ interface GeminiClaimReasoningOutput {
   sourceRelationships?: Array<{
     sourceIndex: number;
     relationship: SourceRelationship;
+    evidenceOrigin?: 'Independent' | 'Derivative' | 'Same Origin' | 'Unknown';
+    originGroupName?: string;
+  }>;
+  factualComponents?: Array<{
+    componentText: string;
+    status: string;
+    supportingCount?: number;
+    contradictingCount?: number;
+    evidenceStatus?: string;
+  }>;
+  evidenceOrigins?: Array<{
+    originName: string;
+    description: string;
+    sourceIndices: number[];
   }>;
 }
 
@@ -58,6 +76,9 @@ export async function verifyClaimsPipeline(
         severity: 'low',
       };
 
+      const subjectiveCoverage = computeVerificationCoverage(rawClaim.claimText, 'INSUFFICIENT EVIDENCE');
+      const { iec: subjectiveIec } = analyzeIndependentEvidenceCorroboration([], 25);
+
       verifiedClaims.push({
         id: claimId,
         claimText: rawClaim.claimText,
@@ -75,6 +96,8 @@ export async function verifyClaimsPipeline(
         uncertainty: 'Subjective assessments and speculative forecasts contain inherent uncertainty.',
         sources: [],
         riskIndicators: [subjectiveRisk],
+        verificationCoverage: subjectiveCoverage,
+        evidenceIndependence: subjectiveIec,
       });
     } else {
       verifiableClaims.push({ raw: rawClaim, index: i, id: claimId });
@@ -155,6 +178,9 @@ export async function verifyClaimsPipeline(
         severity: 'high',
       };
 
+      const zeroCoverage = computeVerificationCoverage(vc.raw.claimText, 'INSUFFICIENT EVIDENCE');
+      const { iec: zeroIec } = analyzeIndependentEvidenceCorroboration([], 30);
+
       verifiedClaims.push({
         id: vc.id,
         claimText: vc.raw.claimText,
@@ -171,6 +197,8 @@ export async function verifyClaimsPipeline(
         uncertainty: 'Complete absence of verifiable web evidence.',
         sources: [],
         riskIndicators: [noEvidRisk],
+        verificationCoverage: zeroCoverage,
+        evidenceIndependence: zeroIec,
       });
       continue;
     }
@@ -205,7 +233,10 @@ Verification Standards:
 3. Identify specific supporting evidence quotations/facts from the sources.
 4. Identify any contradicting evidence quotations/facts from the sources.
 5. Identify any conflicts or disagreements between sources.
-6. For each source (1 to ${rankedSources.length}), classify its relationship to the claim: "SUPPORTS", "CONTRADICTS", "NEUTRAL", or "INSUFFICIENT".
+6. For each source (1 to ${rankedSources.length}), classify its relationship to the claim ("SUPPORTS", "CONTRADICTS", "NEUTRAL", or "INSUFFICIENT"), and estimate its evidence origin ("Independent", "Derivative", "Same Origin", or "Unknown").
+   - SAFETY: Do NOT assume different domains mean independent sources. Do NOT assume similar sources are derivative without evidence. Do NOT fabricate provenance. If relationship cannot be determined reliably, use "Unknown".
+7. Decompose the claim into 1 to 4 meaningful atomic factual propositions ("factualComponents") and evaluate the coverage status for each.
+8. Group sources that share the same underlying information or primary release into "evidenceOrigins".
 
 Return ONLY valid JSON matching this schema:
 {
@@ -218,7 +249,28 @@ Return ONLY valid JSON matching this schema:
   "conflicts": ["<description of any conflicting findings between sources if any>"],
   "uncertainty": "<any remaining empirical caveats or limitations>",
   "sourceRelationships": [
-    { "sourceIndex": <1-based index>, "relationship": "SUPPORTS" | "CONTRADICTS" | "NEUTRAL" | "INSUFFICIENT" }
+    {
+      "sourceIndex": <1-based index>,
+      "relationship": "SUPPORTS" | "CONTRADICTS" | "NEUTRAL" | "INSUFFICIENT",
+      "evidenceOrigin": "Independent" | "Derivative" | "Same Origin" | "Unknown",
+      "originGroupName": "<name of origin group>"
+    }
+  ],
+  "factualComponents": [
+    {
+      "componentText": "<atomic factual proposition>",
+      "status": "SUPPORTED" | "CONTRADICTED" | "INSUFFICIENT EVIDENCE" | "UNKNOWN",
+      "supportingCount": <integer>,
+      "contradictingCount": <integer>,
+      "evidenceStatus": "<brief evidence status for component>"
+    }
+  ],
+  "evidenceOrigins": [
+    {
+      "originName": "<descriptive origin name, e.g. 'NASA Primary Technical Fact Sheet'>",
+      "description": "<underlying event or release represented>",
+      "sourceIndices": [<1-based index>]
+    }
   ]
 }`;
 
@@ -314,7 +366,23 @@ Return ONLY valid JSON matching this schema:
       });
     }
 
-    finalClaimSources.forEach((src) => {
+    // Compute Verification Coverage and Independent Evidence Corroboration (IEC)
+    const coverage = computeVerificationCoverage(
+      vc.raw.claimText,
+      verdict,
+      parsed?.factualComponents,
+      supportingEvidence,
+      contradictingEvidence
+    );
+
+    const { iec, updatedSources } = analyzeIndependentEvidenceCorroboration(
+      finalClaimSources,
+      finalConfidence,
+      parsed?.evidenceOrigins,
+      parsed?.sourceRelationships
+    );
+
+    updatedSources.forEach((src) => {
       if (src.publicationDate) {
         allTimelineEvents.push({
           date: src.publicationDate,
@@ -340,11 +408,13 @@ Return ONLY valid JSON matching this schema:
       contradictingEvidence,
       conflicts,
       uncertainty,
-      sources: finalClaimSources,
+      sources: updatedSources,
       riskIndicators: claimRiskIndicators,
+      verificationCoverage: coverage,
+      evidenceIndependence: iec,
     });
 
-    allSources.push(...finalClaimSources);
+    allSources.push(...updatedSources);
   }
 
   // Deduplicate all sources across claims

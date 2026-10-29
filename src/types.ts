@@ -31,6 +31,8 @@ export type SourceCategoryTier =
 
 export type SourceRelationship = 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' | 'INSUFFICIENT';
 
+export type SourceOriginRelationship = 'Independent' | 'Derivative' | 'Same Origin' | 'Unknown';
+
 export interface SourceItem {
   id: string;
   sourceName: string;
@@ -43,6 +45,8 @@ export interface SourceItem {
   assessment: SourceAssessment;
   tier: SourceCategoryTier;
   excerpt?: string;
+  evidenceOrigin?: SourceOriginRelationship;
+  originGroupId?: string;
 }
 
 export type RiskIndicatorType =
@@ -64,6 +68,48 @@ export interface RiskIndicator {
   severity: 'low' | 'medium' | 'high';
 }
 
+export type FactualComponentStatus = 'SUPPORTED' | 'CONTRADICTED' | 'INSUFFICIENT EVIDENCE' | 'UNKNOWN';
+
+export interface FactualComponentCoverage {
+  id: string;
+  componentText: string;
+  status: FactualComponentStatus;
+  supportingEvidenceCount: number;
+  contradictingEvidenceCount: number;
+  evidenceStatus: string;
+}
+
+export interface VerificationCoverageData {
+  componentsCount: number;
+  supportedCount: number;
+  coverageScore: number | null; // null represents UNKNOWN
+  statusLabel: '100% VERIFIED' | 'PARTIALLY VERIFIED' | 'INSUFFICIENT EVIDENCE' | 'UNKNOWN';
+  components: FactualComponentCoverage[];
+}
+
+export type CorroborationLevel = 'HIGH' | 'MODERATE' | 'LOW' | 'UNKNOWN / LIMITED PROVENANCE';
+
+export interface EvidenceOriginGroup {
+  id: string;
+  originName: string;
+  description: string;
+  isPrimaryOrOfficial?: boolean;
+  sources: SourceItem[];
+}
+
+export interface IndependentEvidenceCorroboration {
+  sourcesRetrieved: number;
+  independentOriginsCount: number;
+  derivativeSourcesCount: number;
+  score: number | null; // 0-100 or null if UNKNOWN / LIMITED PROVENANCE
+  corroborationLevel: CorroborationLevel;
+  baseConfidence: number; // 0-100
+  adjustedConfidence: number; // 0-100
+  groups: EvidenceOriginGroup[];
+  hasReliableProvenance: boolean;
+  provenanceNotes?: string;
+}
+
 export interface ClaimVerification {
   id: string;
   claimText: string;
@@ -80,6 +126,8 @@ export interface ClaimVerification {
   uncertainty: string;
   sources: SourceItem[];
   riskIndicators: RiskIndicator[];
+  verificationCoverage?: VerificationCoverageData;
+  evidenceIndependence?: IndependentEvidenceCorroboration;
 }
 
 export interface ArticleMetadata {

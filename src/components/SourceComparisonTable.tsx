@@ -180,6 +180,13 @@ export const SourceComparisonTable: React.FC<SourceComparisonTableProps> = ({ so
                   </td>
                   <td className="py-3.5 px-4">
                     <span className="text-stone-700 font-mono text-[11px]">{source.tier}</span>
+                    {source.evidenceOrigin && (
+                      <div className="mt-0.5">
+                        <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-mono uppercase bg-stone-100 text-stone-600 border border-stone-200">
+                          {source.evidenceOrigin}
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td className="py-3.5 px-4">{getStanceBadge(source.relationshipToClaim)}</td>
                   <td className="py-3.5 px-4">{getAssessmentBadge(source.assessment)}</td>
